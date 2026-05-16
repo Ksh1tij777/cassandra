@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cassandra - the agent that watches agents</title>
+<style>
+  :root { --bg:#0a0e14; --panel:#121822; --line:#1f2a3a; --txt:#e6edf3;
+          --mut:#7d8da3; --ok:#3fb950; --bad:#f85149; --acc:#58a6ff; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--txt);
+         font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+  header { padding:18px 24px; border-bottom:1px solid var(--line);
+           display:flex; align-items:baseline; gap:14px; }
+  header h1 { font-size:18px; letter-spacing:.5px; }
+  header span { color:var(--mut); font-size:12px; }
+  .wrap { display:grid; grid-template-columns:360px 1fr; height:calc(100vh - 59px); }
+  .ask { padding:20px; border-right:1px solid var(--line); }
+  .ask textarea { width:100%; height:90px; background:var(--panel);
+    color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .ask button { margin-top:10px; width:100%; padding:10px; background:var(--acc);
+    border:0; border-radius:8px; color:#001; font-weight:700; cursor:pointer; }
+  .reply { margin-top:16px; padding:12px; background:var(--panel);
+    border:1px solid var(--line); border-radius:8px; white-space:pre-wrap;
+    color:var(--mut); min-height:60px; }
+  .feed { overflow-y:auto; padding:20px; }
+  .card { border:1px solid var(--line); border-left:3px solid var(--acc);
+    background:var(--panel); border-radius:8px; padding:14px 16px; margin-bottom:12px;
+    animation:in .35s ease; }
+  .card.diagnosed { border-left-color:var(--bad); }
+  .card.patched   { border-left-color:var(--ok); }
+  .card.alert     { box-shadow:0 0 0 1px var(--bad), 0 0 24px rgba(248,81,73,.35);
+                    animation:flash 1s ease; }
+  .card h3 { font-size:14px; margin-bottom:4px; }
+  .card .meta { color:var(--mut); font-size:12px; }
+  .card a { color:var(--acc); font-size:12px; text-decoration:none; }
+  .card pre { margin-top:8px; padding:10px; background:#0d1117;
+    border:1px solid var(--line); border-radius:6px; overflow-x:auto;
+    font-size:12px; white-space:pre-wrap; }
+  .stage { font-size:10px; text-transform:uppercase; letter-spacing:1px;
+    color:var(--mut); }
+  @keyframes in { from{opacity:0;transform:translateY(6px)} to{opacity:1} }
+  @keyframes flash { 0%{background:#3b1416} 100%{background:var(--panel)} }
+</style>
+</head>
+<body>
+<header>
+  <h1>CASSANDRA</h1><span>the meta-agent that watches other agents - Arize / Phoenix</span>
+</header>
+<div class="wrap">
+  <div class="ask">
+    <div class="stage">Drive the Patient (ShopBot)</div>
+    <textarea id="msg">Hi, what's your refund window for orders shipped to Germany?</textarea>
+    <button onclick="ask()">Send customer message</button>
+    <div class="reply" id="reply">- awaiting -</div>
+  </div>
+  <div class="feed" id="feed"></div>
+</div>
+<script>
+const feed = document.getElementById('feed');
+async function ask() {
+  document.getElementById('reply').textContent = '...';
+  const message = document.getElementById('msg').value;
+  const r = await fetch('/ask', {method:'POST',headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({message})});
+  const j = await r.json();
+  document.getElementById('reply').textContent = j.reply || JSON.stringify(j);
+}
+const es = new EventSource('/events');
+es.addEventListener('pipeline', e => {
+  const ev = JSON.parse(e.data);
+  const c = document.createElement('div');
+  c.className = 'card ' + ev.stage + (ev.stage === 'diagnosed' ? ' alert' : '');
+  const link = ev.phoenix_url
+    ? `<div><a href="${ev.phoenix_url}" target="_blank">open in Phoenix &rarr;</a></div>` : '';
+  const diff = ev.payload && ev.payload.diff
+    ? `<pre>${ev.payload.diff.replace(/</g,'&lt;')}</pre>` : '';
+  c.innerHTML = `<div class="stage">${ev.stage} &middot; ${ev.incident_id}</div>
+    <h3>${ev.title}</h3><div class="meta">${ev.detail||''}</div>${link}${diff}`;
+  feed.prepend(c);
+});
+</script>
+</body>
+</html>
