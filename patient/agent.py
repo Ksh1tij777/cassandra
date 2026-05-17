@@ -35,6 +35,9 @@ _tracer = init_tracing()
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "demo"
+    # Live trace replay (killer addition): re-run the ORIGINAL failing input
+    # against a candidate system prompt without redeploying the Patient.
+    system_override: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -67,10 +70,14 @@ async def chat(req: ChatRequest) -> ChatResponse:
         location=s.google_cloud_location,
     )
 
+    system_prompt = req.system_override or FRAGILE_SYSTEM_PROMPT
+
     with _tracer.start_as_current_span("patient.chat", kind=SpanKind.SERVER) as span:
         # Attributes match cassandra.phoenix_mcp.normalize_span expectations.
         span.set_attribute("input.value", req.message)
         span.set_attribute("openinference.span.kind", "LLM")
+        span.set_attribute("patient.prompt_variant",
+                           "candidate" if req.system_override else "current")
 
         contents: list[types.Content] = [
             types.Content(role="user", parts=[types.Part(text=req.message)])
@@ -82,7 +89,7 @@ async def chat(req: ChatRequest) -> ChatResponse:
                 model=s.gemini_model,
                 contents=contents,
                 config=types.GenerateContentConfig(
-                    system_instruction=FRAGILE_SYSTEM_PROMPT,
+                    system_instruction=system_prompt,
                     tools=_gemini_tools(),
                     temperature=0.4,
                 ),

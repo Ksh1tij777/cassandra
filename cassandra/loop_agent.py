@@ -12,6 +12,7 @@ from .diagnostician import Diagnostician
 from .evaluator import Evaluator
 from .models import Incident
 from .patcher import Patcher
+from .replay import TraceReplay
 from .rootcause import RootCauseAnalyst
 from .state import get_state
 from .synthesizer import Synthesizer
@@ -30,6 +31,7 @@ class SupervisionPipeline:
         self.synthesizer = Synthesizer()
         self.evaluator = Evaluator()
         self.patcher = Patcher()
+        self.replay = TraceReplay()
         self.state = get_state()
 
     async def run_once(self) -> Incident | None:
@@ -46,6 +48,7 @@ class SupervisionPipeline:
             inc = await self.evaluator.run_baseline(inc, FRAGILE_SYSTEM_PROMPT)
             inc = await self.patcher.propose(inc)             # prompt fixing
             inc = await self.evaluator.run_candidate(inc)
+            inc = await self.replay.replay(inc)               # live trace replay
             return inc  # yield after one full cycle (demo-deterministic)
         return None
 
