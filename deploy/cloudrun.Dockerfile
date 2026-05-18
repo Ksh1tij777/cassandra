@@ -15,6 +15,10 @@ COPY patient ./patient
 COPY dashboard ./dashboard
 RUN pip install --upgrade pip && pip install .
 
+# Build the React cockpit so the dashboard service can serve web/dist.
+COPY web ./web
+RUN cd web && npm ci --no-audit --no-fund && npm run build && rm -rf node_modules
+
 ENV SERVICE=dashboard PORT=8080
 # patient -> patient.agent:app ; dashboard -> dashboard.main:app
 CMD ["sh", "-c", "uvicorn ${SERVICE}.$( [ \"$SERVICE\" = patient ] && echo agent || echo main ):app --host 0.0.0.0 --port ${PORT}"]

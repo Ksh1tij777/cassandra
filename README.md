@@ -90,7 +90,10 @@ cassandra/
 │   ├── loop_agent.py     #   pipeline + thin ADK LoopAgent shell
 │   ├── state.py          #   durable cursor + dedupe (Firestore/local)
 │   └── events.py         #   in-process bus → dashboard SSE
-├── dashboard/            # C4 — Cloud Run SSE dashboard + live UI
+├── dashboard/            # C4 — FastAPI: serves web/dist + SSE /events + /ask
+├── web/                  # React + Vite + Tailwind + Framer Motion cockpit
+│   ├── src/components/   #   Hero, Manifesto, Cockpit, EventCard, views, …
+│   └── public/img/       #   license-clear photography (Picsum/Unsplash)
 ├── functions/trace_poller/  # scheduled Cloud Function (drives one cycle)
 ├── scripts/
 │   ├── seed_incident.py  #   C5 — deterministic demo trap + labeled set
@@ -109,17 +112,23 @@ cp .env.example .env            # fill GCP project + Phoenix key
 # 0. (once) confirm the live Phoenix MCP tool surface, then reconcile phoenix_mcp.py
 python -m scripts.spike_enumerate_mcp
 
-# 1. the Patient
+# 1. build the React cockpit (served by the dashboard)
+cd web && npm install && npm run build && cd ..
+
+# 2. the Patient
 uvicorn patient.agent:app --port 8081
-# 2. the dashboard
-uvicorn dashboard.main:app --port 8080      # open http://localhost:8080
-# 3. drive one supervision cycle
+# 3. the dashboard (serves web/dist + SSE) → http://localhost:8080
+uvicorn dashboard.main:app --port 8080
+# 4. drive one supervision cycle
 python -m scripts.seed_incident             # make the Patient hallucinate
 python -c "import asyncio;from cassandra.loop_agent import SupervisionPipeline;\
 asyncio.run(SupervisionPipeline().run_once())"
 
 pytest                                       # offline unit tests
 ```
+
+> Frontend dev with hot reload: `cd web && npm run dev` (Vite on :5173, proxies
+> `/events` and `/ask` to the FastAPI dashboard on :8080).
 
 ## Status
 
