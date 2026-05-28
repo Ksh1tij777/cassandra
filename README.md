@@ -60,7 +60,7 @@ See [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) for the full judging-cr
 
 ## Tech Stack
 
-- **Reasoning core:** Gemini 3
+- **Reasoning core:** Gemini 3 (or direct OpenAI `gpt-4o-mini` / `gpt-4o` integration)
 - **Orchestration:** Google Cloud Agent Builder (the officially named build path) —
   `LoopAgent` + `SequentialAgent` via ADK/Agent Engine as the underlying runtime
 - **Runtime:** Vertex AI Agent Engine
@@ -75,13 +75,13 @@ See [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) for the full judging-cr
 ```
 cassandra/
 ├── patient/              # C1 — the fragile "ShopBot" victim agent
-│   ├── agent.py          #   Gemini-3 agent + FastAPI /chat + OpenInference spans
+│   ├── agent.py          #   Gemini-3 / OpenAI agent + FastAPI /chat + OpenInference spans
 │   ├── tools.py          #   intentionally flaky get_refund_policy / lookup_order
 │   └── instrumentation.py#   OTLP exporter → Phoenix patient-prod
 ├── cassandra/            # C3 — the meta-agent
 │   ├── models.py         #   Incident object threaded through the pipeline
 │   ├── phoenix_mcp.py    #   the single Phoenix MCP gateway (NFR-10)
-│   ├── llm.py            #   Gemini 3 structured/text helper
+│   ├── llm.py            #   Gemini 3 / OpenAI structured/text helper
 │   ├── watcher.py        #   FR-W: poll spans since durable cursor
 │   ├── diagnostician.py  #   FR-D: LLM-as-judge → annotate Phoenix span
 │   ├── synthesizer.py    #   FR-S: adversarial dataset → Phoenix dataset
@@ -94,8 +94,8 @@ cassandra/
 ├── web/                  # React + Vite + Tailwind + Framer Motion cockpit
 │   ├── src/components/   #   Hero, Manifesto, Cockpit, EventCard, views, …
 │   └── public/img/       #   license-clear photography (Picsum/Unsplash)
-├── functions/trace_poller/  # scheduled Cloud Function (drives one cycle)
 ├── scripts/
+│   ├── run_pipeline.py   #   runs one complete end-to-end supervision cycle locally
 │   ├── seed_incident.py  #   C5 — deterministic demo trap + labeled set
 │   └── spike_enumerate_mcp.py  # Day-1 Phoenix MCP enumeration (de-risk R1)
 ├── deploy/               # cloudrun.Dockerfile, cloudbuild.yaml, agent_engine.py
@@ -107,50 +107,42 @@ cassandra/
 
 ```bash
 pip install -e ".[dev]"
-cp .env.example .env            # fill GCP project + Phoenix key
-
-# 0. (once) confirm the live Phoenix MCP tool surface, then reconcile phoenix_mcp.py
-python -m scripts.spike_enumerate_mcp
+cp .env.example .env            # Fill in OpenAI/Gemini API keys + Phoenix URLs
 
 # 1. build the React cockpit (served by the dashboard)
 cd web && npm install && npm run build && cd ..
 
-# 2. the Patient
-uvicorn patient.agent:app --port 8081
-# 3. the dashboard (serves web/dist + SSE) → http://localhost:8080
-uvicorn dashboard.main:app --port 8080
-# 4. drive one supervision cycle
-python -m scripts.seed_incident             # make the Patient hallucinate
-python -c "import asyncio;from cassandra.loop_agent import SupervisionPipeline;\
-asyncio.run(SupervisionPipeline().run_once())"
+# 2. Start the Patient Agent (ShopBot)
+uvicorn patient.agent:app --port 8082 --reload
 
-pytest                                       # offline unit tests
+# 3. Start the FastAPI Dashboard
+uvicorn dashboard.main:app --port 8085 --reload
+
+# 4. Drive one supervision cycle (Seeding an incident, polling, and auto-patching)
+python scripts/run_pipeline.py
+
+# Run offline unit tests
+pytest
 ```
 
-> Frontend dev with hot reload: `cd web && npm run dev` (Vite on :5173, proxies
-> `/events` and `/ask` to the FastAPI dashboard on :8080).
+> **Frontend dev with hot reload:** `cd web && npm run dev` (Vite dev server starts on :5173, proxying `/events` and `/ask` requests to the FastAPI dashboard running on :8085).
 
 ## Status
 
-**Codebase scaffolded and committed** (public: https://github.com/SirjanSingh/cassandra).
-All modules byte-compile; offline unit tests cover the MCP helpers, models/state, and the
-Diagnostician decision boundary.
+**Codebase complete and fully verified.**
+All modules byte-compile and live end-to-end integration runs succeed.
 
 | Area | State |
 |------|-------|
 | Docs (PRD → strategy) | ✅ complete, reconciled with official Devpost page |
-| Patient + incident seeder (C1/C5) | ✅ code complete — not yet run live |
-| Cassandra 5 sub-agents + loop (C3) | ✅ code complete — logic unit-tested offline |
+| Patient + incident seeder (C1/C5) | ✅ code complete and verified live |
+| Cassandra 5 sub-agents + loop (C3) | ✅ code complete and verified live |
 | Dashboard (C4) | ✅ code complete — SSE + UI |
-| Deploy manifests (Cloud Run / Agent Engine) | ✅ written — not yet deployed |
-| Phoenix MCP surface | ⚠️ assumed; `# SPIKE-RECONCILE` markers pending Day-1 spike |
-| Live end-to-end run on Phoenix Cloud | ⛔ blocked on GCP/Phoenix credentials |
-| Hosted URL + demo video (submission items) | ⛔ pending |
-
-Anything touching the live Phoenix MCP or exact ADK/Vertex APIs is written against the
-documented surface and marked `# SPIKE-RECONCILE`; the enumeration spike confirms real
-tool names before Phase-2 feature work. See [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md)
-for the full timeline.
+| Deploy manifests (Cloud Run / Agent Engine) | ✅ written |
+| Phoenix MCP surface | ✅ fully integrated and verified via live `@arizeai/phoenix-mcp` |
+| Live end-to-end run on Phoenix | ✅ verified live (both Gemini and OpenAI backends) |
+| Feedback loop protection | ✅ verified live (test session filtering prevents infinite loops) |
+| Hosted URL + demo video | ⛔ pending |
 
 ## License
 
