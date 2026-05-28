@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from functools import lru_cache
 
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+load_dotenv(override=True)
 
 
 class Settings(BaseSettings):
@@ -15,6 +18,11 @@ class Settings(BaseSettings):
     google_cloud_location: str = "us-central1"
     google_genai_use_vertexai: bool = True
     gemini_model: str = "gemini-3-pro"  # SPIKE-RECONCILE: confirm exact id in region
+    gemini_api_key: str | None = None
+
+    # OpenAI
+    openai_api_key: str | None = None
+    openai_model: str = "gpt-4o-mini"
 
     # Arize Phoenix (partner MCP)
     phoenix_base_url: str = "https://app.phoenix.arize.com"
@@ -40,6 +48,14 @@ class Settings(BaseSettings):
     @property
     def phoenix_mcp_arg_list(self) -> list[str]:
         return [a for a in self.phoenix_mcp_args.split(",") if a]
+
+    @property
+    def is_openrouter(self) -> bool:
+        return bool(self.gemini_api_key and self.gemini_api_key.startswith("sk-or-"))
+
+    @property
+    def is_openai(self) -> bool:
+        return bool(self.openai_api_key)
 
 
 @lru_cache

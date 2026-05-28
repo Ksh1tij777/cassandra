@@ -13,6 +13,7 @@ import json
 from fastapi import FastAPI
 from google import genai
 from google.genai import types
+from openai import AsyncOpenAI
 from opentelemetry.trace import SpanKind
 from pydantic import BaseModel
 
@@ -64,11 +65,104 @@ def _gemini_tools() -> list[types.Tool]:
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     s = get_settings()
-    client = genai.Client(
-        vertexai=s.google_genai_use_vertexai,
-        project=s.google_cloud_project,
-        location=s.google_cloud_location,
-    )
+    
+    if s.is_openai or s.is_openrouter:
+        if s.is_openai:
+            client = AsyncOpenAI(api_key=s.openai_api_key)
+            model = s.openai_model
+        else:
+            client = AsyncOpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=s.gemini_api_key,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/SirjanSingh/cassandra",
+                    "X-Title": "Cassandra",
+                },
+            )
+            model = s.gemini_model
+        system_prompt = (req.system_override or FRAGILE_SYSTEM_PROMPT) + "\n\nIMPORTANT: Be extremely concise. Keep your responses very brief and short."
+        
+        with _tracer.start_as_current_span("patient.chat", kind=SpanKind.SERVER) as span:
+            span.set_attribute("input.value", req.message)
+            span.set_attribute("openinference.span.kind", "LLM")
+            span.set_attribute("patient.session_id", req.session_id)
+            span.set_attribute("patient.prompt_variant",
+                               "candidate" if req.system_override else "current")
+
+            tools = [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": t["name"],
+                        "description": t["description"],
+                        "parameters": {
+                            "type": "object",
+                            "properties": {k: {"type": "string"} for k in t["parameters"]},
+                            "required": list(t["parameters"]),
+                        },
+                    }
+                }
+                for t in TOOLSPECS
+            ]
+
+            messages: list[dict] = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": req.message},
+            ]
+            tool_log: list[dict] = []
+
+            for _ in range(4):
+                resp = await client.chat.completions.create(
+                    model=model,
+                    messages=messages,  # type: ignore[arg-type]
+                    tools=tools,  # type: ignore[arg-type]
+                    temperature=0.4,
+                )
+                message = resp.choices[0].message
+                tool_calls = message.tool_calls
+
+                if not tool_calls:
+                    reply = message.content or ""
+                    break
+
+                messages.append(message.model_dump())
+                for tool_call in tool_calls:
+                    fn_name = tool_call.function.name
+                    fn_args = json.loads(tool_call.function.arguments)
+                    with _tracer.start_as_current_span(f"tool.{fn_name}") as tspan:
+                        tspan.set_attribute("tool.name", fn_name)
+                        tspan.set_attribute("input.value", json.dumps(fn_args))
+                        result = _TOOL_FNS[fn_name](**fn_args)
+                        tspan.set_attribute("output.value", json.dumps(result))
+                    tool_log.append({"name": fn_name, "args": fn_args, "result": result})
+                    messages.append({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "name": fn_name,
+                        "content": json.dumps({"result": result}),
+                    })
+            else:
+                reply = "Sorry, I'm having trouble with that right now."
+
+            span.set_attribute("output.value", reply)
+            if tool_log:
+                span.set_attribute("tool.calls", json.dumps(tool_log))
+            ctx = span.get_span_context()
+            trace_id = format(ctx.trace_id, "032x") if ctx and ctx.trace_id else None
+
+        return ChatResponse(reply=reply, trace_id=trace_id)
+
+    if s.google_genai_use_vertexai:
+        g_client = genai.Client(
+            vertexai=True,
+            project=s.google_cloud_project,
+            location=s.google_cloud_location,
+        )
+    else:
+        g_client = genai.Client(
+            vertexai=False,
+            api_key=s.gemini_api_key,
+        )
 
     system_prompt = req.system_override or FRAGILE_SYSTEM_PROMPT
 
@@ -76,16 +170,17 @@ async def chat(req: ChatRequest) -> ChatResponse:
         # Attributes match cassandra.phoenix_mcp.normalize_span expectations.
         span.set_attribute("input.value", req.message)
         span.set_attribute("openinference.span.kind", "LLM")
+        span.set_attribute("patient.session_id", req.session_id)
         span.set_attribute("patient.prompt_variant",
                            "candidate" if req.system_override else "current")
 
         contents: list[types.Content] = [
             types.Content(role="user", parts=[types.Part(text=req.message)])
         ]
-        tool_log: list[dict] = []
+        tool_log = []
 
         for _ in range(4):  # bounded tool loop
-            resp = await client.aio.models.generate_content(
+            resp = await g_client.aio.models.generate_content(
                 model=s.gemini_model,
                 contents=contents,
                 config=types.GenerateContentConfig(
