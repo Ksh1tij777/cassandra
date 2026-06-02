@@ -17,10 +17,12 @@ def test_as_list_unwraps_envelopes():
 
 
 def test_normalize_span_maps_core_fields():
+    # The Patient emits FLAT dotted OpenInference attributes (patient/agent.py:
+    # span.set_attribute("input.value", ...)), which normalize_span reads directly.
     raw = {
         "context": {"span_id": "s1", "trace_id": "t1"},
         "start_time": "2026-05-17T00:00:00Z",
-        "attributes": {"input": {"value": "hi"}, "output": {"value": "there"}},
+        "attributes": {"input.value": "hi", "output.value": "there"},
     }
     s = normalize_span(raw, "patient-prod")
     assert s.span_id == "s1"

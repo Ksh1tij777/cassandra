@@ -57,18 +57,33 @@ async def main():
             print("="*60)
             print(f"Incident ID: {inc.incident_id}")
             print(f"Span ID: {inc.span.span_id}")
-            print(f"Verdict Failure: {inc.verdict.is_failure if inc.verdict else False}")
-            print(f"Verdict Reason: {inc.verdict.explanation if inc.verdict else 'N/A'}")
+            if inc.verdict:
+                print(f"Verdict: {inc.verdict.failure_class.value} "
+                      f"(confidence {inc.verdict.confidence:.2f})")
+                print(f"Verdict Reason: {inc.verdict.rationale}")
             if inc.root_cause:
-                print(f"Root Cause: {inc.root_cause}")
-            if inc.synth_examples:
-                print(f"Synthesized Eval Dataset size: {len(inc.synth_examples)} examples")
+                print(f"Root Cause: {inc.root_cause.culprit} - {inc.root_cause.summary}")
+                print(f"Fix Strategy: {inc.root_cause.fix_strategy}")
+            if inc.dataset_examples:
+                print(f"Synthesized Eval Dataset size: {len(inc.dataset_examples)} examples")
             if inc.candidate_prompt:
                 print(f"\nProposed Patched System Prompt:\n{inc.candidate_prompt}")
-            if inc.eval_runs:
-                print("\nEvaluation Runs:")
-                for variant, score in inc.eval_runs.items():
-                    print(f"  - {variant}: {score}")
+            if inc.experiment:
+                exp = inc.experiment
+                print("\nEvaluation (synthesized dataset, baseline vs candidate):")
+                print(f"  - baseline:  {exp.baseline_pass_rate:.0%} pass")
+                if exp.candidate_pass_rate is not None:
+                    print(f"  - candidate: {exp.candidate_pass_rate:.0%} pass "
+                          f"(delta {exp.delta:+.0%})")
+            if inc.replay:
+                print(f"\nLive replay on the patched prompt: "
+                      f"{'FIXED' if inc.replay.fixed else 'STILL BROKEN'}")
+                print(f"  before: {inc.replay.before_output[:160]}")
+                print(f"  after:  {inc.replay.after_output[:160]}")
+            if inc.redteam:
+                rt = inc.redteam
+                print(f"\nAdversarial red-team: {rt.before_pass}/{rt.attacks_run} -> "
+                      f"{rt.after_pass}/{rt.attacks_run} probes survive the patch")
             print("="*60)
         else:
             print("\n[4/4] Pipeline completed: No fresh failing spans were found in Phoenix.")

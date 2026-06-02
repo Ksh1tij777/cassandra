@@ -1,11 +1,8 @@
 """Dashboard service (FR-DB1..DB5).
 
-Serves the built React cockpit (web/dist), streams pipeline events over SSE,
-and proxies the "send customer message" box to the Patient so the whole loop is
-driveable live on camera.
-
-Build the UI with:  cd web && npm install && npm run build
-In dev, run Vite (`npm run dev`) which proxies /events and /ask here.
+Serves the self-contained cockpit (dashboard/ui/index.html — no build step),
+streams pipeline events over SSE, and proxies the "send customer message" box to
+the Patient so the whole loop is driveable live on camera.
 """
 
 from __future__ import annotations
@@ -27,7 +24,7 @@ from cassandra.loop_agent import SupervisionPipeline
 
 app = FastAPI(title="Cassandra Dashboard")
 
-_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
+_UI = Path(__file__).resolve().parent / "ui"
 
 
 @app.on_event("startup")
@@ -70,23 +67,20 @@ async def ask(req: Ask) -> dict:
 
 @app.get("/healthz")
 async def healthz() -> dict:
-    return {"ok": True, "service": "dashboard", "built": _DIST.is_dir()}
+    return {"ok": True, "service": "dashboard", "ui": (_UI / "index.html").is_file()}
 
 
-# Serve the built SPA last so /events, /ask, /healthz keep priority.
-# html=True gives SPA fallback to index.html for client-side routing.
-if _DIST.is_dir():
-    app.mount("/", StaticFiles(directory=str(_DIST), html=True), name="spa")
+# Serve the self-contained cockpit last so /events, /ask, /healthz keep priority.
+# html=True serves dashboard/ui/index.html at "/".
+if (_UI / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=str(_UI), html=True), name="ui")
 else:
 
     @app.get("/", response_class=HTMLResponse)
-    async def _unbuilt() -> str:
+    async def _missing() -> str:
         return (
             "<body style='background:#070707;color:#F4F1EA;font-family:monospace;"
             "padding:48px;line-height:1.6'>"
-            "<h1>Cassandra cockpit not built</h1>"
-            "<p>Run <code>cd web &amp;&amp; npm install &amp;&amp; npm run build</code>, "
-            "then restart this service.</p>"
-            "<p>Or run the Vite dev server: <code>cd web &amp;&amp; npm run dev</code> "
-            "(it proxies /events and /ask here).</p></body>"
+            "<h1>Cassandra cockpit missing</h1>"
+            "<p>Expected <code>dashboard/ui/index.html</code>.</p></body>"
         )

@@ -139,16 +139,13 @@ class PhoenixMCP:
         return len(rows)
 
     # --- Evaluator (FR-E1/E3/E4) ---
+    # Phoenix MCP exposes only read-side experiment tools (get-experiment-by-id,
+    # list-experiments-for-dataset). It has NO create/run-experiment tool, so the
+    # baseline-vs-candidate run is executed against the live agent in evaluator.py
+    # (real numbers, not a stub). This reads an experiment back when one exists.
 
     async def get_experiment(self, experiment_id: str) -> dict:
         return _as_dict(await self._call("get_experiment", experiment_id=experiment_id))
-
-    # Phoenix MCP doesn't expose create/run experiment tools yet — stubs for now.
-    async def create_experiment(self, dataset_id: str, name: str, prompt: str) -> str:
-        return f"experiment-{name}"
-
-    async def run_experiment(self, experiment_id: str) -> dict:
-        return {"status": "queued", "experiment_id": experiment_id}
 
     # --- Patcher (FR-PA2): upsert-prompt ---
 

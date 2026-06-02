@@ -90,7 +90,8 @@ cassandra/
 │   ├── loop_agent.py     #   pipeline + thin ADK LoopAgent shell
 │   ├── state.py          #   durable cursor + dedupe (Firestore/local)
 │   └── events.py         #   in-process bus → dashboard SSE
-├── dashboard/            # C4 — FastAPI: serves web/dist + SSE /events + /ask
+├── dashboard/            # C4 — FastAPI: serves ui/index.html + SSE /events + /ask
+│   └── ui/index.html     #   self-contained OLED cockpit (no build step)
 ├── web/                  # React + Vite + Tailwind + Framer Motion cockpit
 │   ├── src/components/   #   Hero, Manifesto, Cockpit, EventCard, views, …
 │   └── public/img/       #   license-clear photography (Picsum/Unsplash)
@@ -109,23 +110,21 @@ cassandra/
 pip install -e ".[dev]"
 cp .env.example .env            # Fill in OpenAI/Gemini API keys + Phoenix URLs
 
-# 1. build the React cockpit (served by the dashboard)
-cd web && npm install && npm run build && cd ..
-
-# 2. Start the Patient Agent (ShopBot)
+# 1. Start the Patient Agent (ShopBot)
 uvicorn patient.agent:app --port 8082 --reload
 
-# 3. Start the FastAPI Dashboard
+# 2. Start the FastAPI Dashboard (serves the self-contained cockpit at http://localhost:8085)
 uvicorn dashboard.main:app --port 8085 --reload
 
-# 4. Drive one supervision cycle (Seeding an incident, polling, and auto-patching)
+# 3. Drive one supervision cycle (seed an incident, poll, diagnose, patch, replay, red-team)
 python scripts/run_pipeline.py
 
 # Run offline unit tests
 pytest
 ```
 
-> **Frontend dev with hot reload:** `cd web && npm run dev` (Vite dev server starts on :5173, proxying `/events` and `/ask` requests to the FastAPI dashboard running on :8085).
+> The cockpit is a single self-contained file (`dashboard/ui/index.html`) served directly by
+> the dashboard — no Node/Vite build step. The legacy `web/` React app is no longer wired in.
 
 ## Status
 
