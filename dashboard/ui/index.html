@@ -279,6 +279,14 @@
       </section>
 
       <section class="panel">
+        <div class="label">Self-evaluation · diagnostic accuracy</div>
+        <button class="btn" id="seval" onclick="runSelfEval()" aria-label="Grade Cassandra's own diagnoses">
+          <span class="spin" aria-hidden="true"></span><span id="sevaltxt">Grade my own diagnoses</span>
+        </button>
+        <div class="reply" id="score"><span class="ph">— Cassandra hasn't graded itself yet —</span></div>
+      </section>
+
+      <section class="panel">
         <div class="label">Supervision pipeline</div>
         <div class="track" id="track"></div>
       </section>
@@ -418,6 +426,33 @@ es.addEventListener('pipeline',e=>{
   feed.appendChild(c);
   feed.scrollTop=feed.scrollHeight;
 });
+
+async function runSelfEval(){
+  const btn=document.getElementById('seval'), txt=document.getElementById('sevaltxt');
+  const out=document.getElementById('score');
+  btn.disabled=true; btn.classList.add('loading'); txt.textContent='Grading…';
+  out.innerHTML='<span class="ph">running the trap library through Cassandra…</span>';
+  try{
+    const r=await fetch('/selfeval',{method:'POST'});
+    const j=await r.json();
+    const pct=Math.round((j.accuracy||0)*100);
+    const col=pct>=80?'--ok':pct>=50?'--warn':'--bad';
+    const rows=Object.entries(j.per_class||{}).map(([k,v])=>{
+      const p=v.total?Math.round(100*v.correct/v.total):0;
+      return `<div style="display:flex;justify-content:space-between;gap:8px;margin-top:5px">
+        <span class="mono" style="color:var(--tx-2)">${esc(k)}</span>
+        <span class="mono">${v.correct}/${v.total} · ${p}%</span></div>`;
+    }).join('');
+    out.innerHTML=`<div style="display:flex;align-items:baseline;gap:8px">
+        <b style="font-size:30px;color:var(${col})" class="mono">${pct}%</b>
+        <span style="color:var(--tx-3)">diagnostic accuracy · ${j.correct}/${j.total} cases</span>
+      </div>${rows}`;
+  }catch(err){
+    out.innerHTML=`<span style="color:var(--bad)">self-eval failed: ${esc(err.message)}</span>`;
+  }finally{
+    btn.disabled=false; btn.classList.remove('loading'); txt.textContent='Grade my own diagnoses';
+  }
+}
 
 async function ask(){
   const btn=document.getElementById('send'), txt=document.getElementById('sendtxt');

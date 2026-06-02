@@ -32,15 +32,27 @@ class Diagnostician:
         self.s = get_settings()
         self.mcp = mcp or PhoenixMCP(self.s)
 
-    async def diagnose(self, inc: Incident) -> Incident:
-        span = inc.span
+    async def judge(
+        self, input_text: str, output_text: str, tool_calls: object = None
+    ) -> Verdict:
+        """Pure LLM-as-judge verdict on one agent turn (no Phoenix side effects).
+
+        Shared by diagnose() (production spans), the self-evaluator (grading Cassandra's
+        own accuracy), and the cassandra-mcp `diagnose` tool — one source of truth.
+        """
         prompt = (
-            f"CUSTOMER INPUT:\n{span.input_text}\n\n"
-            f"AGENT OUTPUT:\n{span.output_text}\n\n"
-            f"TOOL CALLS (name/args/result):\n{span.tool_calls or span.raw.get('tool.calls')}\n\n"
+            f"CUSTOMER INPUT:\n{input_text}\n\n"
+            f"AGENT OUTPUT:\n{output_text}\n\n"
+            f"TOOL CALLS (name/args/result):\n{tool_calls or 'none'}\n\n"
             "Return the verdict JSON."
         )
-        verdict: Verdict = await llm.structured(prompt, Verdict, system=_SYSTEM)
+        return await llm.structured(prompt, Verdict, system=_SYSTEM)
+
+    async def diagnose(self, inc: Incident) -> Incident:
+        span = inc.span
+        verdict = await self.judge(
+            span.input_text, span.output_text, span.tool_calls or span.raw.get("tool.calls")
+        )
         inc.verdict = verdict
         inc.stage = Stage.DIAGNOSED
 

@@ -65,6 +65,18 @@ async def ask(req: Ask) -> dict:
         return r.json()
 
 
+@app.post("/selfeval")
+async def selfeval() -> dict:
+    """Cassandra grades its OWN diagnostic accuracy against labeled ground truth.
+
+    The introspection / self-improvement signal the Arize track rewards.
+    """
+    from cassandra.selfeval import SelfEvaluator
+
+    card = await SelfEvaluator().evaluate()
+    return {**card.model_dump(mode="json"), "accuracy": card.accuracy}
+
+
 @app.get("/healthz")
 async def healthz() -> dict:
     return {"ok": True, "service": "dashboard", "ui": (_UI / "index.html").is_file()}

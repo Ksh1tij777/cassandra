@@ -25,8 +25,8 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from . import llm
-from .diagnostician import _SYSTEM as _DIAGNOSE_SYS
-from .models import DatasetExample, Incident, Verdict
+from .diagnostician import Diagnostician
+from .models import Incident
 from .patcher import _SYSTEM as _PATCH_SYS, _Patch
 from .synthesizer import _SYSTEM as _SYNTH_SYS, _Batch
 
@@ -44,13 +44,7 @@ async def diagnose(
 
     Returns {failure_class, confidence, rationale, expected_behavior, is_failure}.
     """
-    prompt = (
-        f"CUSTOMER INPUT:\n{customer_input}\n\n"
-        f"AGENT OUTPUT:\n{agent_output}\n\n"
-        f"TOOL CALLS (name/args/result):\n{tool_calls or 'none'}\n\n"
-        "Return the verdict JSON."
-    )
-    v: Verdict = await llm.structured(prompt, Verdict, system=_DIAGNOSE_SYS)
+    v = await Diagnostician().judge(customer_input, agent_output, tool_calls)
     return {**v.model_dump(), "is_failure": v.is_failure}
 
 
@@ -136,6 +130,25 @@ async def supervise_latest() -> dict:
     if inc is None:
         return {"handled": False, "reason": "no fresh failing spans"}
     return {"handled": True, **_report(inc)}
+
+
+@mcp.tool()
+async def self_evaluate() -> dict:
+    """Grade Cassandra's OWN diagnostic accuracy against a labeled ground-truth set.
+
+    Runs the trap library through the live Patient + Cassandra's Diagnostician and
+    scores the verdicts vs ground truth. Returns {total, correct, accuracy, per_class}.
+    This is the introspection loop: the meta-agent measuring how well it supervises.
+    """
+    from .selfeval import SelfEvaluator
+
+    card = await SelfEvaluator().evaluate()
+    return {
+        "total": card.total,
+        "correct": card.correct,
+        "accuracy": card.accuracy,
+        "per_class": card.per_class,
+    }
 
 
 def _report(inc: Incident) -> dict[str, Any]:

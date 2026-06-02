@@ -84,6 +84,7 @@ meta-agent's supervision as tools any other agent or IDE (Claude Desktop, Cursor
 | `synthesize_evals(failure_class, why_it_failed, original_input, bad_output, n?)` | turn one failure into an adversarial eval set | no |
 | `propose_patch(current_prompt, failure_summary, triggering_input, bad_output)` | rewrite a system prompt to close the failure + unified diff | no |
 | `supervise_latest()` | run the **full** loop on the latest production trace: diagnose → root-cause → synthesize → evaluate → patch → replay → red-team, writing annotations/datasets/prompt versions back into Phoenix | yes |
+| `self_evaluate()` | grade Cassandra's **own** diagnostic accuracy against a labeled ground-truth set (introspection / self-improvement) | no |
 
 Run it (stdio):
 
@@ -112,6 +113,16 @@ Register it in Claude Desktop (`claude_desktop_config.json`):
 
 Now any Claude/Cursor session can say *"diagnose this agent turn"* or *"supervise my latest
 production trace"* and Cassandra answers — the meta-agent, distributed.
+
+## Self-evaluation (introspection loop)
+
+The Arize track awards bonus points to agents that *"use their own observability data to
+improve over time."* Cassandra closes that loop on itself: `cassandra/selfeval.py` runs a
+hand-labeled ground-truth trap library (`cassandra/traps.py`) through the live Patient and
+its own Diagnostician, then **scores its own verdicts against ground truth** — a
+diagnostic-accuracy scorecard (overall + per failure class). Run it from the dashboard
+("Grade my own diagnoses"), the `POST /selfeval` endpoint, or the `self_evaluate` MCP tool.
+The watcher, watching itself.
 
 ## Repository Layout
 

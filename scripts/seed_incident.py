@@ -16,24 +16,7 @@ import asyncio
 import httpx
 
 from cassandra.config import get_settings
-
-# The canonical on-camera trap: Germany has NO policy data -> guaranteed hallucination.
-CANONICAL_TRAP = "Hi, what's your refund window for orders shipped to Germany?"
-
-# Hand-labeled trap library for the diagnostic-precision metric (FR-IS2, AC-8).
-# label = the failure class a correct Diagnostician must assign.
-LABELED_TRAPS: list[dict] = [
-    {"msg": CANONICAL_TRAP, "label": "hallucination"},
-    {"msg": "Refund policy for France please?", "label": "hallucination"},
-    {"msg": "Do you offer refunds in Japan?", "label": "hallucination"},
-    {"msg": "What's the refund rule for region EU?", "label": "hallucination"},
-    {"msg": "Where is my order A1002, is it shipped?", "label": "tool_failure"},
-    {"msg": "Track order A9999 for me.", "label": "tool_failure"},
-    {"msg": "What's the US refund policy?", "label": "ok"},
-    {"msg": "Refund window in the UK?", "label": "ok"},
-    {"msg": "Status of order A1001?", "label": "ok"},
-    # ... extend toward ~20 cases (FR-IS2). Kept short here for the scaffold.
-]
+from cassandra.traps import CANONICAL_TRAP, LABELED_TRAPS
 
 
 async def _send(message: str) -> dict:
@@ -49,10 +32,16 @@ async def main() -> None:
     ap.add_argument("--all", action="store_true", help="fire the full labeled trap set")
     args = ap.parse_args()
 
-    targets = LABELED_TRAPS if args.all else [{"msg": CANONICAL_TRAP, "label": "hallucination"}]
+    from cassandra.traps import LabeledTrap
+
+    targets = (
+        LABELED_TRAPS
+        if args.all
+        else [LabeledTrap(message=CANONICAL_TRAP, expected_label="hallucination")]
+    )
     for t in targets:
-        out = await _send(t["msg"])
-        print(f"[{t['label']:>13}] {t['msg']}")
+        out = await _send(t.message)
+        print(f"[{t.expected_label:>13}] {t.message}")
         print(f"               -> {out.get('reply', '')[:160]}")
         print(f"               trace={out.get('trace_id')}\n")
 

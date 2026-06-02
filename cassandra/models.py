@@ -108,6 +108,34 @@ class RedTeamResult(BaseModel):
     examples: list[dict] = Field(default_factory=list)
 
 
+class ScorecardCase(BaseModel):
+    """One graded case in Cassandra's self-evaluation."""
+
+    message: str
+    expected: str
+    predicted: str
+    confidence: float
+    correct: bool
+
+
+class Scorecard(BaseModel):
+    """Cassandra grading its OWN diagnostic accuracy against labeled ground truth.
+
+    This is the introspection / self-improvement signal the Arize track rewards:
+    the meta-agent measuring how well it supervises, on its own observability data.
+    """
+
+    total: int
+    correct: int
+    per_class: dict[str, dict] = Field(default_factory=dict)  # label -> {total, correct}
+    cases: list[ScorecardCase] = Field(default_factory=list)
+    evaluated_at: datetime = Field(default_factory=_now)
+
+    @property
+    def accuracy(self) -> float:
+        return round(self.correct / self.total, 4) if self.total else 0.0
+
+
 class Stage(str, Enum):
     WATCHED = "watched"
     DIAGNOSED = "diagnosed"
