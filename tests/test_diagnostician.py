@@ -48,7 +48,7 @@ def _span():
 
 @pytest.mark.asyncio
 async def test_high_confidence_failure_is_annotated(monkeypatch):
-    async def fake_structured(prompt, schema, system=""):
+    async def fake_structured(prompt, schema, system="", temperature=0.2):
         return Verdict(
             failure_class=FailureClass.HALLUCINATION, confidence=0.93,
             rationale="Invented a refund policy with no supporting tool data.",
@@ -65,7 +65,7 @@ async def test_high_confidence_failure_is_annotated(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_ok_verdict_not_annotated(monkeypatch):
-    async def fake_structured(prompt, schema, system=""):
+    async def fake_structured(prompt, schema, system="", temperature=0.2):
         return Verdict(failure_class=FailureClass.OK, confidence=0.99, rationale="grounded")
 
     monkeypatch.setattr("cassandra.diagnostician.llm.structured", fake_structured)
