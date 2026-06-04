@@ -54,6 +54,8 @@ See [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) for the full judging-cr
 | [docs/PRD.md](docs/PRD.md) | Product Requirements Document — vision, users, scope, success metrics |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Detailed functional & non-functional requirements |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System & agent architecture, data flow, MCP surface |
+| [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Plain-language design, every workflow narrated, flaws table, security audit, simplifications |
+| [docs/sessions/](docs/sessions/) | Per-session change log — the project's durable working memory |
 | [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | 25-day solo build plan with checkpoints |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Shot-by-shot ≤3-minute video script |
 | [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) | Competitive read & judging-criteria mapping |
@@ -181,7 +183,7 @@ cp .env.example .env            # Fill in OpenAI/Gemini API keys + Phoenix URLs
 # 1. Start the Patient Agent (ShopBot)
 uvicorn patient.agent:app --port 8082 --reload
 
-# 2. Start the FastAPI Dashboard (serves the self-contained cockpit at http://localhost:8085)
+# 2. Start the FastAPI Dashboard (cockpit at http://localhost:8085, animated explainer at /how)
 uvicorn dashboard.main:app --port 8085 --reload
 
 # 3. Drive one supervision cycle (seed an incident, poll, diagnose, patch, replay, red-team)
@@ -207,7 +209,9 @@ All modules byte-compile and live end-to-end integration runs succeed.
 | Evaluation | ✅ real baseline-vs-candidate scoring (no stubbed experiments) |
 | Dashboard (C4) | ✅ single self-contained cockpit (no build step) — SSE + UI |
 | Custom `cassandra-mcp` server | ✅ 5 tools (incl. self_evaluate), registered + unit-tested |
-| Self-evaluation scorecard | ✅ grades its own diagnostic accuracy vs labeled ground truth |
+| Self-evaluation scorecard | ✅ grades its own diagnostic accuracy vs labeled ground truth — **100%** (11/11) on OpenAI |
+| Animated explainer page | ✅ self-contained `/how` — every workflow + MCP call I/O, no build step |
+| `system_override` hardening | ✅ honored only on the sandboxed `session_id="test"` path (unit + live tested) |
 | Self-tracing | ✅ Cassandra's own reasoning traced into the `cassandra-meta` Phoenix project |
 | Cost/latency + severity | ✅ candidate-vs-baseline efficiency delta + incident severity |
 | Real Phoenix experiments | ✅ optional on-product A/B (`PHOENIX_EXPERIMENTS_ENABLED`, needs live Phoenix) |
@@ -216,7 +220,7 @@ All modules byte-compile and live end-to-end integration runs succeed.
 | Phoenix MCP surface | ✅ fully integrated and verified via live `@arizeai/phoenix-mcp` |
 | Live end-to-end run on Phoenix | ✅ verified live (both Gemini and OpenAI backends) |
 | Feedback loop protection | ✅ verified live (test session filtering prevents infinite loops) |
-| Tests | ✅ 12 passing (offline; LLM + MCP mocked) |
+| Tests | ✅ 23 passing (offline; LLM + MCP mocked) |
 | Vertex Agent Engine run (needs your GCP creds) | ⛔ pending |
 | Hosted URL + demo video | ⛔ pending |
 
