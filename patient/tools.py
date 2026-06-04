@@ -15,8 +15,12 @@ _REFUND_POLICY: dict[str, str] = {
 }
 
 _ORDERS: dict[str, dict] = {
-    "A1001": {"status": "shipped", "carrier": "UPS", "eta": "2026-05-20"},
+    "A1001": {"status": "shipped", "carrier": "UPS", "eta": "2026-05-20"},  # complete
+    # MALFORMED on purpose (FR-P2): these orders exist but the lookup returns null
+    # carrier/eta. A well-built agent surfaces "tracking not available yet"; the fragile
+    # Patient invents a carrier + delivery date — a tool_failure Cassandra must catch.
     "A1002": {"status": "processing", "carrier": None, "eta": None},
+    "A1003": {"status": "shipped", "carrier": None, "eta": None},
 }
 
 
