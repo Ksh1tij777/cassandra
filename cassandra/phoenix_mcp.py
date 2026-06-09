@@ -9,6 +9,7 @@ Reconciled against actual @arizeai/phoenix-mcp surface (spike_output/phoenix_mcp
 
 from __future__ import annotations
 
+import base64
 import json
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -30,6 +31,12 @@ _TOOLS = {
     "get_prompt": "get-prompt",
     "list_traces": "list-traces",
 }
+
+
+# Module-level cache so ALL PhoenixMCP instances share resolved project node IDs.
+# The watcher resolves these on first query_spans; diagnostician/rootcause/patcher
+# then use them from span_url() without needing their own MCP list-projects call.
+_project_id_cache: dict[str, str] = {}
 
 
 class PhoenixMCP:
@@ -85,6 +92,8 @@ class PhoenixMCP:
     async def query_spans(
         self, project: str, since: datetime | None, limit: int = 50
     ) -> list[SpanRecord]:
+        # Eagerly resolve the project's node ID so span_url() links work
+        await self._resolve_project_id(project)
         kwargs: dict[str, Any] = {
             "project_identifier": project,
             "limit": limit,
@@ -161,9 +170,40 @@ class PhoenixMCP:
         )
         return _id_of(res, fallback=f"{name}-v?")
 
+    async def _resolve_project_id(self, project_name: str) -> str:
+        """Resolve a project name to its Phoenix base64 node ID.
+
+        Phoenix UI routes use base64-encoded IDs (e.g. 'UHJvamVjdDoy' for 'Project:2'),
+        not plain project names. We query list-projects once and cache the mapping.
+        """
+        if project_name in _project_id_cache:
+            return _project_id_cache[project_name]
+        try:
+            projects = await self.list_projects()
+            for p in projects:
+                name = p.get("name", "")
+                node_id = p.get("id", "")
+                if node_id:
+                    _project_id_cache[name] = node_id
+            if project_name in _project_id_cache:
+                return _project_id_cache[project_name]
+        except Exception:
+            pass
+        # Fallback: synthesize a base64 ID from the name (won't work but won't crash)
+        return base64.b64encode(f"Project:{project_name}".encode()).decode()
+
+    async def resolve_span_node_id(self, span_id: str) -> str:
+        """Encode a numeric span row ID as a Phoenix base64 node ID."""
+        return base64.b64encode(f"Span:{span_id}".encode()).decode()
+
     def span_url(self, span: SpanRecord) -> str:
-        """Deep link into the Phoenix UI for the dashboard (FR-DB4)."""
-        return f"{self.s.phoenix_base_url}/projects/{span.project}/spans/{span.span_id}"
+        """Deep link into the Phoenix UI for the dashboard (FR-DB4).
+
+        Uses the module-level cached project node ID if available (populated during
+        query_spans by ANY PhoenixMCP instance). Falls back to the project name.
+        """
+        project_id = _project_id_cache.get(span.project, span.project)
+        return f"{self.s.phoenix_base_url}/projects/{project_id}/spans/{span.trace_id}"
 
 
 # --- normalization & unwrap helpers ---
