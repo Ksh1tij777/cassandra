@@ -1,6 +1,8 @@
 import asyncio
 import json
+import sys
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from datetime import datetime, timezone
 import httpx
 from cassandra.loop_agent import SupervisionPipeline
