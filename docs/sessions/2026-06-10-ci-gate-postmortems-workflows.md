@@ -39,6 +39,11 @@ The flywheel that ties them together: a production failure -> Cassandra synthesi
 - Full suite: 33 tests passing offline; `ruff check .` clean.
 - Branches `feature/ci-prompt-gate` and `feature/incident-postmortems` pushed; both merged into main with `--no-ff` merge commits; main pushed.
 
-## Open items (unchanged)
+## Deployment dry run (same session, later)
 
-- GCP secrets + Cloud Build deploy, Agent Engine run, demo video.
+Ran a read-only readiness check against gcloud (account priyalm2503@gmail.com, project `project-c22b7a3a-10c5-463c-9d0`): project ACTIVE, billing ENABLED, only `aiplatform` API enabled. Two blockers documented: local-only Phoenix URL in `.env` (Cloud Run cannot reach it; needs an Arize Cloud space) and `STATE_BACKEND=local`. Fixed a real manifest gap: `deploy/cloudbuild.yaml` never passed `OPENAI_API_KEY` or `PHOENIX_BASE_URL` to the services, so the deployed pipeline would have had no LLM and no Phoenix; both now wired (new `openai-api-key` secret, `_PHOENIX_BASE_URL` substitution, `STATE_BACKEND=firestore` and `GOOGLE_GENAI_USE_VERTEXAI=false` on the services). Wrote `docs/DEPLOYMENT.md` with the exact step-by-step commands (APIs, artifact repo, Firestore, secrets, IAM, two-pass build, verification, Agent Engine) and the Cloud Run vs Agent Engine distinction.
+
+## Open items
+
+- Create an Arize Cloud Phoenix space + key, then run the commands in docs/DEPLOYMENT.md.
+- Agent Engine run, demo video.
