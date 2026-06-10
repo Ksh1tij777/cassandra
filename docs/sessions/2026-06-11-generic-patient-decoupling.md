@@ -57,6 +57,18 @@ behavior is unchanged (ShopBot remains the zero-config fallback).
 - No behavior change for the demo: with no new env set, the resolver lands on the
   ShopBot fallback and the prompt name default matches the old hardcoded string.
 
+## Follow-up in the same session: zero-code VS Code distribution
+
+- README "Use it in your IDE" subsection: one-click **Install in VS Code** badge
+  (`vscode.dev/redirect/mcp/install` deep link with a promptString input for the OpenAI
+  key) + `.vscode/mcp.json` snippet + Claude Desktop/Cursor block, and a pointer to the
+  bring-your-own-agent guide.
+- Shipped `.vscode/mcp.json` in the repo (un-ignored via `!.vscode/mcp.json`) so cloning
+  the repo auto-registers `cassandra-mcp` in VS Code Copilot agent mode.
+- Decision: the `onboard_agent` auto-discovery MCP tool (scan a workspace for system
+  prompts/instrumentation and generate the adapter + env) is deliberately POST-hackathon —
+  invisible to judges in the video/demo and risky on deadline day.
+
 ## Notes / open items
 
 - `.env` changes still require a server restart (`get_settings()` cached).

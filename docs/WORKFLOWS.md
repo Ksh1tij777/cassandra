@@ -51,7 +51,7 @@ REPLAY_SHARED_SECRET=<random>                 # same value on Cassandra and the 
 
 ## Workflow 1: IDE copilot (zero infrastructure)
 
-Register `cassandra-mcp` in Claude Desktop, Claude Code, or Cursor and the supervision tools become part of your normal coding session. No Phoenix needed for the composable tools.
+Register `cassandra-mcp` in VS Code (Copilot agent mode), Claude Desktop, Claude Code, or Cursor and the supervision tools become part of your normal coding session. No Phoenix needed for the composable tools. VS Code users have it easiest: the README has a one-click install badge, and cloning this repo ships a ready `.vscode/mcp.json` (it prompts for your OpenAI key on first use).
 
 ```json
 {

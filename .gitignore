@@ -27,7 +27,9 @@ spike_output/
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+# ignore .vscode contents but ship the MCP config so cloning registers cassandra-mcp
+.vscode/*
+!.vscode/mcp.json
 
 
 # Auto-generated incident postmortems

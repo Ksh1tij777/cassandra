@@ -108,7 +108,33 @@ pip install -e .
 cassandra-mcp                 # or: python -m cassandra.mcp_server
 ```
 
-Register it in Claude Desktop (`claude_desktop_config.json`):
+### Use it in your IDE (zero infrastructure)
+
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Cassandra_MCP-0098FF?logo=githubcopilot&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=cassandra&inputs=%5B%7B%22id%22%3A%22openai_api_key%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22OpenAI%20API%20key%20%28judge/synthesis%20backend%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22cassandra-mcp%22%2C%22env%22%3A%7B%22OPENAI_API_KEY%22%3A%22%24%7Binput%3Aopenai_api_key%7D%22%2C%22PHOENIX_BASE_URL%22%3A%22http%3A//localhost%3A6006%22%2C%22PHOENIX_API_KEY%22%3A%22local%22%2C%22PATIENT_ENDPOINT%22%3A%22http%3A//localhost%3A8082/chat%22%7D%7D)
+
+**VS Code (Copilot agent mode)** — click the badge above (it prompts for your OpenAI key
+and registers the server), or add this to `.vscode/mcp.json` — cloning this repo gives you
+that file already:
+
+```json
+{
+  "servers": {
+    "cassandra": {
+      "type": "stdio",
+      "command": "cassandra-mcp",
+      "env": {
+        "OPENAI_API_KEY": "sk-...",
+        "PHOENIX_BASE_URL": "http://localhost:6006",
+        "PHOENIX_API_KEY": "local",
+        "PATIENT_ENDPOINT": "http://localhost:8082/chat"
+      }
+    }
+  }
+}
+```
+
+**Claude Desktop / Claude Code / Cursor** — same server block under `mcpServers` in
+`claude_desktop_config.json` (Claude) or `.cursor/mcp.json` (Cursor):
 
 ```json
 {
@@ -126,8 +152,11 @@ Register it in Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
-Now any Claude/Cursor session can say *"diagnose this agent turn"* or *"supervise my latest
-production trace"* and Cassandra answers — the meta-agent, distributed.
+Now any Copilot/Claude/Cursor session can say *"diagnose this agent turn"* or *"supervise my
+latest production trace"* and Cassandra answers — the meta-agent, distributed. And it is not
+ShopBot-only: point `PATIENT_PROJECT`/`PATIENT_ENDPOINT` at **your** agent — see
+["Bring your own agent"](docs/WORKFLOWS.md#bring-your-own-agent) and the drop-in
+[`examples/adapter_template.py`](examples/adapter_template.py).
 
 ## CI prompt regression gate (`cassandra-gate`)
 
