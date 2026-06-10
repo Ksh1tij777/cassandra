@@ -52,8 +52,25 @@ class SupervisionPipeline:
             inc = await self.evaluator.run_candidate(inc)
             inc = await self.replay.replay(inc)               # live trace replay
             inc = await self.redteam.attack(inc)              # adversarial testing
+            self._write_postmortem(inc)                       # ready-to-paste report
             return inc  # yield after one full cycle (demo-deterministic)
         return None
+
+    @staticmethod
+    def _write_postmortem(inc: Incident) -> None:
+        """Persist the auto-postmortem to reports/<incident_id>.md (best-effort)."""
+        from pathlib import Path
+
+        from .report import render_postmortem
+
+        try:
+            out = Path("reports")
+            out.mkdir(exist_ok=True)
+            (out / f"{inc.incident_id}.md").write_text(
+                render_postmortem(inc), encoding="utf-8"
+            )
+        except OSError as exc:  # never let report I/O kill the supervision loop
+            print(f"postmortem write failed: {exc}")
 
 
 # --- ADK orchestration shell ---------------------------------------------------

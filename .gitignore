@@ -29,3 +29,6 @@ Thumbs.db
 .idea/
 .vscode/
 
+
+# Auto-generated incident postmortems
+reports/
