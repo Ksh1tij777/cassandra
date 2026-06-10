@@ -16,6 +16,10 @@ COPY patient ./patient
 COPY dashboard ./dashboard
 RUN pip install --upgrade pip && pip install .
 
+# Run as a non-root user (Cloud Run best practice; nothing here needs root).
+RUN useradd --create-home --uid 1001 appuser && chown -R appuser /app
+USER appuser
+
 ENV SERVICE=dashboard PORT=8080
 # patient -> patient.agent:app ; dashboard -> dashboard.main:app
 CMD ["sh", "-c", "uvicorn ${SERVICE}.$( [ \"$SERVICE\" = patient ] && echo agent || echo main ):app --host 0.0.0.0 --port ${PORT}"]

@@ -4,6 +4,9 @@
 substitutions:
   _REGION: us-central1
   _REPO: cassandra
+  # Public URL of the deployed Patient service (set after first deploy), e.g.
+  # https://patient-xxxxx-uc.a.run.app/chat — the dashboard's pipeline drives it.
+  _PATIENT_URL: http://localhost:8082/chat
 
 steps:
   - name: gcr.io/cloud-builders/docker
@@ -18,15 +21,18 @@ steps:
     args: ["run", "deploy", "patient",
            "--image", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$SHORT_SHA",
            "--region", "${_REGION}", "--set-env-vars", "SERVICE=patient",
-           "--update-secrets", "PHOENIX_API_KEY=phoenix-api-key:latest",
+           "--update-secrets",
+           "PHOENIX_API_KEY=phoenix-api-key:latest,REPLAY_SHARED_SECRET=replay-shared-secret:latest",
            "--allow-unauthenticated"]
 
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args: ["run", "deploy", "dashboard",
            "--image", "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/app:$SHORT_SHA",
-           "--region", "${_REGION}", "--set-env-vars", "SERVICE=dashboard",
-           "--update-secrets", "PHOENIX_API_KEY=phoenix-api-key:latest",
+           "--region", "${_REGION}",
+           "--set-env-vars", "SERVICE=dashboard,PATIENT_ENDPOINT=${_PATIENT_URL}",
+           "--update-secrets",
+           "PHOENIX_API_KEY=phoenix-api-key:latest,REPLAY_SHARED_SECRET=replay-shared-secret:latest",
            "--allow-unauthenticated"]
 
 images:

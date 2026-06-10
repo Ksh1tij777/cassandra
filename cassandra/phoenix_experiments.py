@@ -12,7 +12,7 @@ Requires a live Phoenix that holds the dataset.
 
 from __future__ import annotations
 
-from .config import Settings, get_settings
+from .config import Settings, get_settings, replay_auth_headers
 
 
 def register_experiment(dataset_name: str, system_prompt: str, label: str) -> str | None:
@@ -64,6 +64,7 @@ def _make_task(s: Settings, system_prompt: str):
         r = httpx.post(
             s.patient_endpoint,
             json={"message": question, "system_override": system_prompt, "session_id": "test"},
+            headers=replay_auth_headers(),
             timeout=60,
         )
         r.raise_for_status()

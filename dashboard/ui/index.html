@@ -70,6 +70,18 @@
   .pill.err .dot{background:var(--bad)}
   @keyframes pulse{50%{opacity:.45}}
 
+  /* ---- Pitch hero strip ---- */
+  .hero{display:flex;align-items:center;gap:14px;padding:10px 24px;
+    border-bottom:1px solid var(--line-1);
+    background:linear-gradient(90deg,rgba(59,130,246,.07),rgba(139,92,246,.05) 60%,transparent)}
+  .hero .tagline{font-size:13px;color:var(--tx-2)}
+  .hero .tagline b{color:var(--tx-1);font-weight:600}
+  .hero .chips{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+  .hero .hchip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;
+    border:1px solid var(--line-2);border-radius:99px;font:500 11px 'JetBrains Mono',monospace;
+    color:var(--tx-2);background:var(--bg-elev);white-space:nowrap}
+  .hero .hchip .hd{width:6px;height:6px;border-radius:50%;flex:none}
+
   .body{flex:1;display:grid;grid-template-columns:336px 1fr;min-height:0}
 
   /* ---- Left control rail ---- */
@@ -109,19 +121,24 @@
   .stat span{display:block;font-size:10.5px;color:var(--tx-3);
     text-transform:uppercase;letter-spacing:.07em;margin-top:3px}
 
-  /* ---- Pipeline tracker ---- */
-  .track{display:flex;flex-direction:column;gap:2px}
-  .step{display:flex;align-items:center;gap:11px;padding:7px 6px;border-radius:8px;
-    color:var(--tx-3);transition:color var(--t-fast),background var(--t-fast)}
-  .step .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;
-    border:1px solid var(--line-2);background:var(--bg-2);flex:none}
+  /* ---- Pipeline tracker (horizontal stepper above the feed) ---- */
+  .track{display:flex;align-items:center;gap:0;padding:12px 24px;
+    border-bottom:1px solid var(--line-1);overflow-x:auto;
+    background:linear-gradient(180deg,rgba(17,23,37,.35),transparent)}
+  .step{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:99px;
+    color:var(--tx-3);white-space:nowrap;flex:none;
+    transition:color var(--t-fast),background var(--t-fast)}
+  .step .ic{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;
+    border:1px solid var(--line-2);background:var(--bg-2);flex:none;
+    transition:border var(--t-fast),background var(--t-fast)}
   .step .ic svg{width:12px;height:12px}
+  .step span:last-child{font-size:12px;font-weight:500}
   .step.done{color:var(--tx-2)}
   .step.done .ic{border-color:transparent;background:var(--acc-soft);color:var(--acc)}
   .step.active{color:var(--tx-1);background:var(--bg-elev)}
   .step.active .ic{border-color:var(--acc);color:var(--acc);
     box-shadow:0 0 0 3px var(--acc-soft)}
-  .step small{margin-left:auto;font-size:10.5px;color:var(--tx-3)}
+  .seg{flex:none;width:18px;height:1px;background:var(--line-2);margin:0 2px}
 
   /* ---- Feed ---- */
   .feedwrap{display:flex;flex-direction:column;min-height:0}
@@ -226,6 +243,7 @@
     .body{grid-template-columns:1fr}
     .rail{border-right:0;border-bottom:1px solid var(--line-1)}
     .ba{grid-template-columns:1fr}
+    .hero .chips{display:none}
   }
   @media (prefers-reduced-motion:reduce){
     *{animation:none!important;transition:none!important;scroll-behavior:auto}
@@ -258,6 +276,17 @@
       <span class="dot"></span><span id="conntxt">connecting…</span>
     </div>
   </header>
+
+  <div class="hero" role="note" aria-label="What Cassandra does">
+    <span class="tagline"><b>Agents fail silently in production.</b>
+      Cassandra catches the failure in live traces, diagnoses it, proves a fix, and
+      red-teams it: autonomously, in one loop.</span>
+    <span class="chips">
+      <span class="hchip"><span class="hd" style="background:var(--info)"></span>8-stage autonomous loop</span>
+      <span class="hchip"><span class="hd" style="background:var(--violet)"></span>Arize Phoenix native</span>
+      <span class="hchip"><span class="hd" style="background:var(--ok)"></span>grades its own accuracy</span>
+    </span>
+  </div>
 
   <div class="body">
     <aside class="rail">
@@ -292,13 +321,10 @@
         <div class="reply" id="score"><span class="ph">— Cassandra hasn't graded itself yet —</span></div>
       </section>
 
-      <section class="panel">
-        <div class="label">Supervision pipeline</div>
-        <div class="track" id="track"></div>
-      </section>
     </aside>
 
     <main class="feedwrap">
+      <div class="track" id="track" aria-label="Supervision pipeline stages"></div>
       <div class="feedhdr">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
           stroke-width="2" stroke-linecap="round"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
@@ -342,7 +368,8 @@ const COLOR = Object.fromEntries(STAGES.map(s=>[s[0],s[2]]));
 const LABEL = Object.fromEntries(STAGES.map(s=>[s[0],s[1]]));
 
 const track = document.getElementById('track');
-STAGES.forEach(([k,lab])=>{
+STAGES.forEach(([k,lab],i)=>{
+  if(i){const s=document.createElement('span'); s.className='seg'; track.appendChild(s);}
   const d=document.createElement('div'); d.className='step'; d.id='st-'+k;
   d.innerHTML=`<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
     stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg></span>

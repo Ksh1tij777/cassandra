@@ -14,7 +14,7 @@ import httpx
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 import asyncio
@@ -54,7 +54,8 @@ def start_pipeline_watcher():
 
 
 class Ask(BaseModel):
-    message: str
+    # max_length bounds LLM cost/abuse via the public demo proxy.
+    message: str = Field(min_length=1, max_length=2000)
 
 
 @app.get("/events")

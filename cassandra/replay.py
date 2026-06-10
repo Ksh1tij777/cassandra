@@ -12,7 +12,7 @@ import httpx
 from pydantic import BaseModel
 
 from . import llm
-from .config import get_settings
+from .config import get_settings, replay_auth_headers
 from .events import bus
 from .models import Incident, PipelineEvent, ReplayResult, Stage
 
@@ -43,6 +43,7 @@ class TraceReplay:
                     "system_override": inc.candidate_prompt,
                     "session_id": "test",
                 },
+                headers=replay_auth_headers(),
             )
             r.raise_for_status()
             after_output = r.json().get("reply", "")

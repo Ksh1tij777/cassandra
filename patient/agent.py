@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import json
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from google import genai
 from google.genai import types
 from openai import AsyncOpenAI
 from opentelemetry.trace import SpanKind
 from pydantic import BaseModel
+from pydantic import Field as PydanticField
 
 from cassandra.config import get_settings
 from cassandra.llm import _gen_with_retry
@@ -43,24 +44,35 @@ Be concise, warm, and reassuring."""
 _TOOL_FNS = {"get_refund_policy": get_refund_policy, "lookup_order": lookup_order}
 
 
-def resolve_override(system_override: str | None, session_id: str) -> str | None:
+def resolve_override(
+    system_override: str | None, session_id: str, token: str | None = None
+) -> str | None:
     """Decide whether to honor a caller-supplied system-prompt override (SECURITY).
 
     `system_override` replaces the whole system prompt of a tool-using agent — a
     prompt-injection / instruction-override surface. Only Cassandra's sandboxed
-    replay/eval/red-team path legitimately uses it, and that path always sets
-    session_id=="test". So the override is honored ONLY on that path and ignored for
-    every other caller. (Production deployments should also keep the Patient behind
-    network/auth — this gate is the in-app backstop.)
+    replay/eval/red-team path legitimately uses it. Two gates:
+
+    1. session_id == "test" (also keeps these spans out of the Watcher).
+    2. When REPLAY_SHARED_SECRET is set (any public deployment), the caller must also
+       present it in the X-Cassandra-Token header. session_id alone is attacker-
+       controlled on an unauthenticated endpoint, so the secret is what actually
+       prevents prompt hijacking on Cloud Run.
     """
-    return system_override if session_id == "test" else None
+    if session_id != "test":
+        return None
+    secret = get_settings().replay_shared_secret
+    if secret and token != secret:
+        return None
+    return system_override
 
 app = FastAPI(title="The Patient - ShopBot")
 _tracer = init_tracing()
 
 
 class ChatRequest(BaseModel):
-    message: str
+    # max_length bounds LLM cost/abuse on the unauthenticated demo endpoint.
+    message: str = PydanticField(min_length=1, max_length=4000)
     session_id: str = "demo"
     # Live trace replay (killer addition): re-run the ORIGINAL failing input
     # against a candidate system prompt without redeploying the Patient.
@@ -96,15 +108,19 @@ def _gemini_tools() -> list[types.Tool]:
 
 
 @app.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest) -> ChatResponse:
+async def chat(
+    req: ChatRequest,
+    x_cassandra_token: str | None = Header(default=None),
+) -> ChatResponse:
     import time
 
     s = get_settings()
     _t0 = time.perf_counter()
 
-    # SECURITY: honor a system-prompt override only on the sandboxed session_id=="test"
-    # path Cassandra uses for replay/eval/red-team; ignore it for any other caller.
-    override = resolve_override(req.system_override, req.session_id)
+    # SECURITY: honor a system-prompt override only on Cassandra's sandboxed
+    # replay/eval/red-team path (session_id=="test" + shared-secret header when
+    # REPLAY_SHARED_SECRET is configured); ignore it for any other caller.
+    override = resolve_override(req.system_override, req.session_id, x_cassandra_token)
 
     if s.is_openai or s.is_openrouter:
         if s.is_openai:

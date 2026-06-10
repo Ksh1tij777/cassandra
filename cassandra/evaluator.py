@@ -15,13 +15,12 @@ server will expose this as a first-class `run_experiment` tool.)
 from __future__ import annotations
 
 import asyncio
-import time
 
 import httpx
 from pydantic import BaseModel
 
 from . import llm
-from .config import get_settings
+from .config import get_settings, replay_auth_headers
 from .events import bus
 from .models import EfficiencyReport, ExperimentResult, Incident, PipelineEvent, Stage
 from .phoenix_experiments import register_experiment
@@ -51,6 +50,7 @@ class Evaluator:
         r = await c.post(
             self.s.patient_endpoint,
             json={"message": msg, "system_override": prompt, "session_id": "test"},
+            headers=replay_auth_headers(),
         )
         r.raise_for_status()
         return r.json()
@@ -81,7 +81,7 @@ class Evaluator:
         n = len(results)
         rate = round(sum(1 for p, _, _ in results if p) / n, 4)
         avg_tokens = round(sum(t for _, t, _ in results) / n, 1)
-        avg_latency = round(sum(l for _, _, l in results) / n, 1)
+        avg_latency = round(sum(ms for _, _, ms in results) / n, 1)
         return rate, avg_tokens, avg_latency
 
     async def run_baseline(self, inc: Incident, baseline_prompt: str) -> Incident:

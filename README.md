@@ -51,6 +51,7 @@ See [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) for the full judging-cr
 
 | Doc | Purpose |
 |-----|---------|
+| [docs/PITCH.md](docs/PITCH.md) | The pitch — narrative for the website, Devpost page, and demo video |
 | [docs/PRD.md](docs/PRD.md) | Product Requirements Document — vision, users, scope, success metrics |
 | [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Detailed functional & non-functional requirements |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System & agent architecture, data flow, MCP surface |
@@ -179,6 +180,8 @@ cassandra/
 ```bash
 pip install -e ".[dev]"
 cp .env.example .env            # Fill in OpenAI/Gemini API keys + Phoenix URLs
+                                # (public deploys must also set REPLAY_SHARED_SECRET
+                                #  on BOTH services; see deploy/cloudbuild.yaml)
 
 # 1. Start the Patient Agent (ShopBot)
 uvicorn patient.agent:app --port 8082 --reload
@@ -211,7 +214,7 @@ All modules byte-compile and live end-to-end integration runs succeed.
 | Custom `cassandra-mcp` server | ✅ 5 tools (incl. self_evaluate), registered + unit-tested |
 | Self-evaluation scorecard | ✅ grades its own diagnostic accuracy vs labeled ground truth — **100%** (11/11) on OpenAI |
 | Animated explainer page | ✅ self-contained `/how` — every workflow + MCP call I/O, no build step |
-| `system_override` hardening | ✅ honored only on the sandboxed `session_id="test"` path (unit + live tested) |
+| `system_override` hardening | ✅ sandboxed `session_id="test"` path + `REPLAY_SHARED_SECRET` token gate for public deploys (unit + live tested) |
 | Self-tracing | ✅ Cassandra's own reasoning traced into the `cassandra-meta` Phoenix project |
 | Cost/latency + severity | ✅ candidate-vs-baseline efficiency delta + incident severity |
 | Real Phoenix experiments | ✅ optional on-product A/B (`PHOENIX_EXPERIMENTS_ENABLED`, needs live Phoenix) |

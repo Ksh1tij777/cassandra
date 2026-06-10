@@ -54,8 +54,10 @@ python scripts/run_pipeline.py                      # 3. drive ONE full end-to-e
 cassandra-mcp                    # run Cassandra's own published MCP server over stdio
 ```
 
-Note: ports in `.env.example` (8080/8081) differ from the documented run ports (8085/8082);
-`cassandra/config.py` defaults match the documented ports. The dashboard UI is a single
+Note: `.env.example`, `cassandra/config.py` defaults, and the documented run ports all
+agree now (dashboard 8085, patient 8082). `REPLAY_SHARED_SECRET` gates the Patient's
+`system_override` on public deploys (set it on both services or replay/eval/red-team 
+silently lose the override). The dashboard UI is a single
 self-contained `dashboard/ui/index.html` — there is **no Node/Vite build step**. The
 `web/` React app is legacy and no longer wired in (do not modify it for runtime changes).
 

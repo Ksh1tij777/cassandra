@@ -14,7 +14,7 @@ import httpx
 from pydantic import BaseModel
 
 from . import llm
-from .config import get_settings
+from .config import get_settings, replay_auth_headers
 from .events import bus
 from .models import Incident, PipelineEvent, RedTeamResult, Stage
 
@@ -39,7 +39,7 @@ class RedTeam:
         body: dict = {"message": msg, "session_id": "test"}
         if override:
             body["system_override"] = override
-        r = await client.post(self.s.patient_endpoint, json=body)
+        r = await client.post(self.s.patient_endpoint, json=body, headers=replay_auth_headers())
         r.raise_for_status()
         return r.json().get("reply", "")
 

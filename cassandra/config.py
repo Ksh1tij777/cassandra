@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     dashboard_port: int = 8085
     patient_endpoint: str = "http://localhost:8082/chat"
 
+    # Shared secret for the Patient's system_override path (SECURITY). When set, the
+    # Patient honors system_override only if the caller also sends it in the
+    # X-Cassandra-Token header. Unset = local-dev mode (session_id gate only).
+    replay_shared_secret: str | None = None
+
     @property
     def phoenix_mcp_arg_list(self) -> list[str]:
         return [a for a in self.phoenix_mcp_args.split(",") if a]
@@ -82,6 +87,16 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def replay_auth_headers() -> dict[str, str]:
+    """Headers Cassandra attaches when calling the Patient with a system_override.
+
+    Empty when no REPLAY_SHARED_SECRET is configured (local dev), so existing
+    deployments keep working until the secret is set on both services.
+    """
+    s = get_settings()
+    return {"X-Cassandra-Token": s.replay_shared_secret} if s.replay_shared_secret else {}
 
 
 def reload_settings() -> Settings:
