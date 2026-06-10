@@ -108,6 +108,24 @@ async def propose_patch(
     }
 
 
+@mcp.tool()
+async def gate_prompt(prompt: str, cases: list[dict], threshold: float = 0.8) -> dict:
+    """CI regression gate: score a system prompt against eval cases on the live agent.
+
+    Each case is {input_text, expected_answer, acceptance_criterion} (the same shape
+    `synthesize_evals` emits, so synthesized datasets become regression suites).
+    Returns {total, passed_cases, pass_rate, threshold, passed, cases}; `passed` is
+    false when pass_rate < threshold, i.e. the prompt change should be blocked.
+    The same check ships as the `cassandra-gate` CLI for GitHub Actions.
+    """
+    from .gate import run_gate
+    from .models import DatasetExample
+
+    parsed = [DatasetExample.model_validate(c) for c in cases]
+    res = await run_gate(prompt, parsed, threshold=threshold)
+    return res.model_dump()
+
+
 # --- headline tool: the full Phoenix-deep supervision loop ---------------------
 
 
