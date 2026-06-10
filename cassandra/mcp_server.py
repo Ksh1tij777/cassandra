@@ -147,7 +147,11 @@ async def supervise_latest() -> dict:
     inc = await SupervisionPipeline().run_once()
     if inc is None:
         return {"handled": False, "reason": "no fresh failing spans"}
-    return {"handled": True, **_report(inc)}
+    from .report import render_postmortem
+
+    # `postmortem` is paste-ready markdown (GitHub issue / Slack); also written
+    # to reports/<incident_id>.md by the pipeline itself.
+    return {"handled": True, **_report(inc), "postmortem": render_postmortem(inc)}
 
 
 @mcp.tool()
