@@ -31,6 +31,8 @@ dependencies = [
 # Cassandra's own MCP server — publishes the supervision tools over stdio so any
 # agent/IDE (Claude Desktop, Cursor) can call them.
 cassandra-mcp = "cassandra.mcp_server:main"
+# CI prompt regression gate — fails the build when a prompt edit drops the pass rate.
+cassandra-gate = "cassandra.gate:main"
 
 [project.optional-dependencies]
 dev = [
