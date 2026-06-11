@@ -97,8 +97,11 @@ async def structured(
             raise ValueError("Failed to parse response from OpenAI/OpenRouter model")
         return parsed
 
-    resp = await _gen_with_retry(
-        lambda: _client().aio.models.generate_content(
+    # Hold the client in a local across the await: a bare `_client().aio...` temporary
+    # gets GC'd mid-flight, closing its httpx session ("client has been closed").
+    async def _call():
+        client = _client()
+        return await client.aio.models.generate_content(
             model=s.gemini_model,
             contents=prompt,
             config=types.GenerateContentConfig(
@@ -108,7 +111,8 @@ async def structured(
                 temperature=temperature,
             ),
         )
-    )
+
+    resp = await _gen_with_retry(_call)
     return schema.model_validate(json.loads(resp.text))
 
 
@@ -128,13 +132,15 @@ async def text(prompt: str, *, system: str = "", temperature: float = 0.3) -> st
         )
         return resp.choices[0].message.content or ""
 
-    resp = await _gen_with_retry(
-        lambda: _client().aio.models.generate_content(
+    async def _call():
+        client = _client()
+        return await client.aio.models.generate_content(
             model=s.gemini_model,
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=system or None, temperature=temperature
             ),
         )
-    )
+
+    resp = await _gen_with_retry(_call)
     return resp.text or ""
