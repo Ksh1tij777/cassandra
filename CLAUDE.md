@@ -57,9 +57,12 @@ cassandra-mcp                    # run Cassandra's own published MCP server over
 Note: `.env.example`, `cassandra/config.py` defaults, and the documented run ports all
 agree now (dashboard 8085, patient 8082). `REPLAY_SHARED_SECRET` gates the Patient's
 `system_override` on public deploys (set it on both services or replay/eval/red-team 
-silently lose the override). The dashboard UI is a single
-self-contained `dashboard/ui/index.html` — there is **no Node/Vite build step**. The
-`web/` React app is legacy and no longer wired in (do not modify it for runtime changes).
+silently lose the override). **Frontend (as of 2026-06-11): the `web/` React/Vite app is
+the primary UI**, built by the Dockerfile `webbuild` stage and served at `/`;
+`dashboard/main.py` mounts the self-contained `dashboard/ui/index.html` at `/cockpit` (and
+as the fallback when `web/dist` is absent — e.g. `pytest`/local runs with no `npm build`).
+Edit `web/src/**` for the deployed frontend; the single-file cockpit is the no-build
+fallback. SSE/`/ask`/`/selfeval` contracts are shared by both.
 
 ## Architecture
 
