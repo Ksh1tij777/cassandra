@@ -1,5 +1,14 @@
 # Shared image for the Patient and the Dashboard Cloud Run services.
 # Build target is selected via the SERVICE env var (patient | dashboard).
+
+# Stage 1: build the React frontend (web/ sources are tracked; dist/ is not).
+FROM node:20-slim AS webbuild
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
@@ -14,6 +23,8 @@ COPY cassandra ./cassandra
 COPY patient ./patient
 # dashboard/ui/index.html is self-contained (no build step) and ships in this copy.
 COPY dashboard ./dashboard
+# The React frontend (served at /; the single-file cockpit stays at /cockpit).
+COPY --from=webbuild /web/dist ./web/dist
 RUN pip install --upgrade pip && pip install .
 
 # Run as a non-root user (Cloud Run best practice; nothing here needs root).
