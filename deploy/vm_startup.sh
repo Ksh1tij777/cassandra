@@ -12,7 +12,7 @@ export DOCKER_CONFIG=/tmp/.docker
 mkdir -p "${DOCKER_CONFIG}"
 
 PROJECT="cassandra-498318"
-IMG="us-central1-docker.pkg.dev/${PROJECT}/cassandra/app:0ccb29a-react"
+IMG="us-central1-docker.pkg.dev/${PROJECT}/cassandra/app:d7f2e6d-react"
 PHX_URL="https://app.phoenix.arize.com/s/sirjan-singh036"
 
 # NOTE: the Secret Manager REST API pretty-prints its JSON ("data": "..." with a
@@ -48,7 +48,7 @@ docker rm -f patient dashboard 2>/dev/null || true
 # llm.py falls through to Vertex; the VM service account (roles/aiplatform.user +
 # cloud-platform scope) provides ADC. Region must be a real region, not 'global'.
 GEMINI_VARS="-e GOOGLE_GENAI_USE_VERTEXAI=true -e GOOGLE_CLOUD_PROJECT=${PROJECT} \
-  -e GOOGLE_CLOUD_LOCATION=us-central1 -e GEMINI_MODEL=gemini-2.5-flash"
+  -e GOOGLE_CLOUD_LOCATION=us-central1 -e GEMINI_MODEL=gemini-2.5-flash-lite"
 
 # Host networking so the dashboard reaches the patient at localhost:8082.
 docker run -d --name patient --restart=always --network host \
