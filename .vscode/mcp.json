@@ -1,9 +1,9 @@
 {
   "inputs": [
     {
-      "id": "openai_api_key",
+      "id": "gemini_api_key",
       "type": "promptString",
-      "description": "OpenAI API key (judge/synthesis backend)",
+      "description": "Gemini API key (free at aistudio.google.com) - powers diagnose/synthesize/patch",
       "password": true
     }
   ],
@@ -12,7 +12,9 @@
       "type": "stdio",
       "command": "cassandra-mcp",
       "env": {
-        "OPENAI_API_KEY": "${input:openai_api_key}",
+        "GEMINI_API_KEY": "${input:gemini_api_key}",
+        "GOOGLE_GENAI_USE_VERTEXAI": "false",
+        "GEMINI_MODEL": "gemini-2.5-flash",
         "PHOENIX_BASE_URL": "http://localhost:6006",
         "PHOENIX_API_KEY": "local",
         "PATIENT_ENDPOINT": "http://localhost:8082/chat"

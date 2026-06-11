@@ -148,7 +148,7 @@ Cassandra publishes its own MCP server (`cassandra-mcp`), so any agent or IDE
 | `supervise_latest()` | run the **full** loop on the latest trace and return a paste-ready postmortem | ✅ |
 | `self_evaluate()` | grade Cassandra's own diagnostic accuracy vs. labeled ground truth | — |
 
-[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Cassandra_MCP-0098FF?logo=githubcopilot&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=cassandra&inputs=%5B%7B%22id%22%3A%22openai_api_key%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22OpenAI%20API%20key%20%28judge/synthesis%20backend%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22cassandra-mcp%22%2C%22env%22%3A%7B%22OPENAI_API_KEY%22%3A%22%24%7Binput%3Aopenai_api_key%7D%22%2C%22PHOENIX_BASE_URL%22%3A%22http%3A//localhost%3A6006%22%2C%22PHOENIX_API_KEY%22%3A%22local%22%2C%22PATIENT_ENDPOINT%22%3A%22http%3A//localhost%3A8082/chat%22%7D%7D)
+[![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Cassandra_MCP-0098FF?logo=githubcopilot&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=cassandra&inputs=%5B%7B%22id%22%3A%22gemini_api_key%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22Gemini%20API%20key%20%28free%20at%20aistudio.google.com%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22cassandra-mcp%22%2C%22env%22%3A%7B%22GEMINI_API_KEY%22%3A%22%24%7Binput%3Agemini_api_key%7D%22%2C%22GOOGLE_GENAI_USE_VERTEXAI%22%3A%22false%22%2C%22GEMINI_MODEL%22%3A%22gemini-2.5-flash%22%2C%22PHOENIX_BASE_URL%22%3A%22http%3A//localhost%3A6006%22%2C%22PHOENIX_API_KEY%22%3A%22local%22%2C%22PATIENT_ENDPOINT%22%3A%22http%3A//localhost%3A8082/chat%22%7D%7D)
 
 Click the badge (it prompts for your key and registers the server), or add a server block to
 `.vscode/mcp.json` (Copilot) / `claude_desktop_config.json` (Claude) / `.cursor/mcp.json`
@@ -161,7 +161,9 @@ Click the badge (it prompts for your key and registers the server), or add a ser
       "type": "stdio",
       "command": "cassandra-mcp",
       "env": {
-        "OPENAI_API_KEY": "sk-...",
+        "GEMINI_API_KEY": "AIza... (free at aistudio.google.com)",
+        "GOOGLE_GENAI_USE_VERTEXAI": "false",
+        "GEMINI_MODEL": "gemini-2.5-flash",
         "PHOENIX_BASE_URL": "http://localhost:6006",
         "PHOENIX_API_KEY": "local",
         "PATIENT_ENDPOINT": "http://localhost:8082/chat"
