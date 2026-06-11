@@ -1,121 +1,156 @@
 # Cassandra — The Meta-Agent That Watches Other Agents
 
-> An AI agent that babysits other AI agents. Cassandra watches production agents through
-> Arize Phoenix traces, catches hallucinations, prompt drift, and tool-call failures in
-> real time, auto-synthesizes evaluation datasets from the failing traces, runs
-> LLM-as-judge evaluations, and proposes A/B-ready prompt patches — all from inside Phoenix.
+> **Agents fail silently. Cassandra hears them.**
+>
+> Cassandra is an AI agent whose only job is to supervise *other* AI agents. It watches a
+> production agent through Arize Phoenix traces, catches hallucinations, prompt drift, and
+> tool-call failures in real time, turns each failure into an adversarial eval dataset,
+> proves a prompt fix against it, replays the original failing input, and red-teams its own
+> fix — writing every artifact back into Phoenix. No human in the loop.
 
-**Hackathon:** Google Cloud Rapid Agent Hackathon — *Building Agents for Real-World Challenges*
-**Partner track:** Arize (Phoenix — LLM observability & evaluation)
-**Submission deadline:** 2026-06-12 02:30 IST (= 2026-06-11 14:00 PDT) · internal ship target 2026-06-11
-**Verified against the official Devpost page on 2026-05-17** (6,582 participants, $60k total)
+<sub>Built for the Google Cloud Rapid Agent Hackathon (Arize track). Apache-2.0.</sub>
 
 ---
 
-## The Problem
+## The problem
 
-Every team running LLM agents in production has the same unsolved problem: **agents fail
-silently.** A customer-facing agent confidently invents a refund policy. A prompt drifts
-after a model upgrade. A tool call fails and the agent hallucinates around the gap.
+Every team running LLM agents in production shares one unsolved problem: **agents fail
+quietly and confidently.**
 
-Today this is caught by **humans staring at dashboards**, sampling traces by hand, writing
-eval datasets manually, and editing prompts on intuition. It does not scale, it is slow,
-and most failures are never caught at all.
+- A support bot invents a refund policy that doesn't exist.
+- A tool call returns nothing and the agent papers over the gap with a fabricated delivery date.
+- A model upgrade drifts a prompt's behavior overnight.
 
-## The Idea
+Today this is caught by **humans staring at trace dashboards** — sampling conversations by
+hand, writing eval datasets manually, and editing prompts on intuition. It's slow, it
+doesn't scale, and most failures are never caught at all.
 
-Cassandra closes that loop autonomously. It is, recursively, **an agent whose job is to
-supervise other agents.** It runs the exact workflow Phoenix was built for — but
-automated, continuous, and self-improving:
+## The product
+
+Cassandra closes that loop autonomously. It connects to the observability platform your
+agent already exports traces to (Arize Phoenix) and runs the exact workflow Phoenix was
+built for — but **automated, continuous, and self-improving.** One incident goes in; one
+verified, evidence-backed prompt patch comes out.
 
 ```
- monitor ─▶ diagnose ─▶ synthesize evals ─▶ run experiment ─▶ propose patch ─▶ (loop)
+ watch ─▶ diagnose ─▶ root-cause ─▶ synthesize evals ─▶ evaluate
+                                                            │
+        red-team ◀─ replay ◀─ patch ◀────────────────────┘
 ```
 
-## Why This Wins the Arize Bucket
+| Stage | What happens |
+|-------|--------------|
+| **Watch** | Poll fresh production traces from Phoenix; one incident per cycle, deduped by span. |
+| **Diagnose** | An LLM-as-judge classifies the failure — *hallucination / prompt-drift / tool-failure* — with confidence and severity, and annotates the span. |
+| **Root-cause** | Pinpoint the culprit and the causal chain: which tool returned nothing, which prompt line told the model to fabricate. |
+| **Synthesize** | Turn that single failure into an adversarial eval dataset, written back into Phoenix. |
+| **Evaluate** | Score the current prompt against the dataset, live, on the real agent. |
+| **Patch** | Rewrite the system prompt to close the failure — registered as a Phoenix prompt version with a unified diff. |
+| **Replay** | Re-run the *exact* original failing input on the patched prompt and judge whether this case is now fixed. |
+| **Red-team** | Fire the adversarial probes at the live agent — baseline vs. patched — and report the survival rate. |
 
-- **Quality of the Idea (25%)** — A beautifully recursive concept: an agent that audits
-  agents. Almost every other entry will *be* an agent; almost none will be an agent
-  *about* agents. Memorable and original.
-- **Technological Implementation (25%)** — Exercises nearly the entire Phoenix MCP tool
-  surface: traces, spans, annotations, datasets, experiments, prompt management. Arize
-  judges are Phoenix engineers; this is non-trivial, deep, on-product usage.
-- **Potential Impact (25%)** — Every production LLM team has this exact pain and currently
-  solves it with eyeballs.
-- **Design (25%)** — A live dashboard where a failure is caught, annotated, turned into a
-  dataset, and patched — visibly, in seconds, on camera.
+Every artifact (annotation, dataset, experiment scores, prompt version) lands in Phoenix,
+where your team already works.
 
-See [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) for the full judging-criteria map.
+## The recursive twist
 
-## Documentation
+Cassandra also **watches itself.** Its own reasoning is traced into a second Phoenix
+project (`cassandra-meta`), and a built-in self-evaluation runs a hand-labeled trap library
+through its own Diagnostician and scores its diagnostic accuracy against ground truth. The
+supervisor is as observable — and as measurable — as the agents it supervises.
 
-| Doc | Purpose |
-|-----|---------|
-| [docs/PITCH.md](docs/PITCH.md) | The pitch — narrative for the website, Devpost page, and demo video |
-| [docs/WORKFLOWS.md](docs/WORKFLOWS.md) | How to actually use Cassandra: IDE copilot, CI prompt gate, live supervision, postmortems |
-| [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | Post-hackathon roadmap: distribution channels (VS Code, GitHub Actions, MCP registries) and monetization |
-| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Google Cloud deploy guide: Cloud Run (website + agent) and Vertex AI Agent Engine |
-| [docs/PRD.md](docs/PRD.md) | Product Requirements Document — vision, users, scope, success metrics |
-| [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Detailed functional & non-functional requirements |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System & agent architecture, data flow, MCP surface |
-| [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Plain-language design, every workflow narrated, flaws table, security audit, simplifications |
-| [docs/sessions/](docs/sessions/) | Per-session change log — the project's durable working memory |
-| [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) | 25-day solo build plan with checkpoints |
-| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | Shot-by-shot ≤3-minute video script |
-| [docs/WINNING_STRATEGY.md](docs/WINNING_STRATEGY.md) | Competitive read & judging-criteria mapping |
+> The watcher, watching itself. *(Current diagnostic self-score: 100% — 11/11 on the OpenAI backend.)*
 
-## Tech Stack
+## Architecture at a glance
 
-- **Reasoning core:** Gemini 3 (or direct OpenAI `gpt-4o-mini` / `gpt-4o` integration)
-- **Orchestration:** Google Cloud Agent Builder (the officially named build path) —
-  ADK `LoopAgent` wrapping a real custom `BaseAgent` supervision cycle (google-adk 2.1.0)
-- **Runtime:** Vertex AI Agent Engine
-- **Partner MCP (required):** Arize Phoenix MCP server (`@arizeai/phoenix-mcp`) — consumed
-- **Published MCP:** a custom `cassandra-mcp` server that exposes Cassandra's supervision as
-  callable tools for any agent/IDE (see [Cassandra as an MCP server](#cassandra-as-an-mcp-server))
-- **Scheduling:** Cloud Functions (trace poller)
-- **UI / hosting:** Cloud Run (dashboard)
-- **Secrets:** Secret Manager
-- **Optional:** BigQuery (long-term span analytics)
+Two **separate** agents that communicate *only* through Phoenix telemetry. Cassandra never
+touches the Patient's internals — it supervises *through observability*, exactly as a real
+meta-agent would. (The one exception is a sandboxed `session_id="test"` probe path used by
+evaluate/replay/red-team, which the Watcher filters out so Cassandra never supervises itself
+into an infinite loop.)
 
-## Cassandra as an MCP server
+```mermaid
+flowchart TB
+    user(["👤 User / operator"])
+    clients(["IDE & agents<br/>VS Code · Claude · Cursor"])
 
-Cassandra doesn't just *consume* the partner Phoenix MCP — it *publishes its own*. The
-`cassandra-mcp` server (`cassandra/mcp_server.py`, built on the MCP Python SDK) exposes the
-meta-agent's supervision as tools any other agent or IDE (Claude Desktop, Cursor, …) can call:
+    subgraph patient["The Patient — fragile prod agent (ShopBot)"]
+        chat["FastAPI /chat"]
+        tools["flaky tools<br/>get_refund_policy · lookup_order"]
+        chat --> tools
+    end
 
-| Tool | What it does | Phoenix? |
-|------|--------------|----------|
-| `diagnose(customer_input, agent_output, tool_calls?)` | LLM-as-judge verdict (hallucination / prompt-drift / tool-failure) | no |
-| `synthesize_evals(failure_class, why_it_failed, original_input, bad_output, n?)` | turn one failure into an adversarial eval set | no |
-| `propose_patch(current_prompt, failure_summary, triggering_input, bad_output)` | rewrite a system prompt to close the failure + unified diff | no |
-| `gate_prompt(prompt, cases, threshold?)` | CI regression gate: score a prompt against eval cases on the live agent; `passed=false` means block the change | no |
-| `supervise_latest()` | run the **full** loop on the latest production trace: diagnose → root-cause → synthesize → evaluate → patch → replay → red-team, writing annotations/datasets/prompt versions back into Phoenix — and return a paste-ready markdown **postmortem** | yes |
-| `self_evaluate()` | grade Cassandra's **own** diagnostic accuracy against a labeled ground-truth set (introspection / self-improvement) | no |
+    subgraph phoenix["Arize Phoenix — observability"]
+        prod[("patient-prod<br/>production traces")]
+        meta[("cassandra-meta<br/>self-traces")]
+        pmcp["@arizeai/phoenix-mcp"]
+        pmcp --- prod
+    end
 
-**Concrete use cases** (full recipes in [docs/WORKFLOWS.md](docs/WORKFLOWS.md)):
+    subgraph cassandra["Cassandra — the meta-agent · ADK LoopAgent (one incident / cycle)"]
+        direction LR
+        w["Watch"] --> d["Diagnose"] --> rc["Root-cause"] --> s["Synthesize"] --> e["Evaluate"] --> p["Patch"] --> rp["Replay"] --> rt["Red-team"]
+    end
 
-- *While building an agent* — ask your IDE assistant: "diagnose this turn", "synthesize 10
-  evals for this failure", "propose a patch and show the diff". Zero infrastructure.
-- *In CI* — "gate my new prompt against `evals/cases.json` at 80%", or run the same check
-  headless with the `cassandra-gate` CLI (see below).
-- *On call* — "supervise the latest production trace": one tool call runs the entire loop
-  and hands back a postmortem ready to file as a GitHub issue.
+    dash["Dashboard cockpit<br/>Cloud Run + SSE"]
 
-Run it (stdio):
+    user -->|message| chat
+    chat -->|OpenInference spans| prod
+    cassandra <-->|"poll spans · write annotations,<br/>datasets, prompt versions (MCP)"| pmcp
+    cassandra -. self-traces .-> meta
+    cassandra -->|"live probes (session=test)"| chat
+    cassandra -->|incident stream| dash
+    user --> dash
+    clients -->|"cassandra-mcp tools"| cassandra
+```
+
+## See it work
+
+A live cockpit. You type a customer message; the victim agent (**"the Patient"** — a
+deliberately fragile ShopBot) confidently invents a refund policy. Seconds later Cassandra
+catches it in the trace feed and the full pipeline plays out on screen: the diagnosis, the
+causal chain, the synthesized attack set, baseline-vs-candidate pass rates, the prompt diff,
+the before/after replay, and the red-team table. Then you press **"Grade my own diagnoses"**
+and Cassandra scores itself.
 
 ```bash
-pip install -e .
-cassandra-mcp                 # or: python -m cassandra.mcp_server
+pip install -e ".[dev]"
+cp .env.example .env            # fill in OpenAI/Gemini keys + Phoenix URLs
+
+uvicorn patient.agent:app --port 8082 --reload   # 1. the Patient (ShopBot)
+uvicorn dashboard.main:app --port 8085 --reload  # 2. cockpit at :8085 (animated explainer at /how)
+python scripts/run_pipeline.py                   # 3. drive one full supervision cycle
+
+pytest                          # offline unit tests (LLM + MCP mocked)
 ```
 
-### Use it in your IDE (zero infrastructure)
+> The cockpit is a single self-contained file (`dashboard/ui/index.html`) served directly by
+> the dashboard — no Node/Vite build step. The legacy `web/` React app is no longer wired in.
+> Public deploys must also set `REPLAY_SHARED_SECRET` on both services (see `deploy/cloudbuild.yaml`).
+
+## Three ways to use it
+
+Cassandra isn't just a demo — it's distributed as tools you can drop into your own workflow.
+
+### 1. In your IDE — zero infrastructure
+
+Cassandra publishes its own MCP server (`cassandra-mcp`), so any agent or IDE
+(VS Code Copilot, Claude Desktop/Code, Cursor) can call the meta-agent directly:
+
+| Tool | What it does | Touches Phoenix? |
+|------|--------------|:---:|
+| `diagnose(customer_input, agent_output, tool_calls?)` | LLM-as-judge verdict (hallucination / prompt-drift / tool-failure) | — |
+| `synthesize_evals(failure_class, why_it_failed, original_input, bad_output, n?)` | turn one failure into an adversarial eval set | — |
+| `propose_patch(current_prompt, failure_summary, triggering_input, bad_output)` | rewrite a system prompt + unified diff | — |
+| `gate_prompt(prompt, cases, threshold?)` | CI regression gate; `passed=false` blocks the change | — |
+| `supervise_latest()` | run the **full** loop on the latest trace and return a paste-ready postmortem | ✅ |
+| `self_evaluate()` | grade Cassandra's own diagnostic accuracy vs. labeled ground truth | — |
 
 [![Install in VS Code](https://img.shields.io/badge/VS_Code-Install_Cassandra_MCP-0098FF?logo=githubcopilot&logoColor=white)](https://vscode.dev/redirect/mcp/install?name=cassandra&inputs=%5B%7B%22id%22%3A%22openai_api_key%22%2C%22type%22%3A%22promptString%22%2C%22description%22%3A%22OpenAI%20API%20key%20%28judge/synthesis%20backend%29%22%2C%22password%22%3Atrue%7D%5D&config=%7B%22type%22%3A%22stdio%22%2C%22command%22%3A%22cassandra-mcp%22%2C%22env%22%3A%7B%22OPENAI_API_KEY%22%3A%22%24%7Binput%3Aopenai_api_key%7D%22%2C%22PHOENIX_BASE_URL%22%3A%22http%3A//localhost%3A6006%22%2C%22PHOENIX_API_KEY%22%3A%22local%22%2C%22PATIENT_ENDPOINT%22%3A%22http%3A//localhost%3A8082/chat%22%7D%7D)
 
-**VS Code (Copilot agent mode)** — click the badge above (it prompts for your OpenAI key
-and registers the server), or add this to `.vscode/mcp.json` — cloning this repo gives you
-that file already:
+Click the badge (it prompts for your key and registers the server), or add a server block to
+`.vscode/mcp.json` (Copilot) / `claude_desktop_config.json` (Claude) / `.cursor/mcp.json`
+(Cursor) — cloning this repo already gives you the VS Code file:
 
 ```json
 {
@@ -134,169 +169,105 @@ that file already:
 }
 ```
 
-**Claude Desktop / Claude Code / Cursor** — same server block under `mcpServers` in
-`claude_desktop_config.json` (Claude) or `.cursor/mcp.json` (Cursor):
-
-```json
-{
-  "mcpServers": {
-    "cassandra": {
-      "command": "cassandra-mcp",
-      "env": {
-        "OPENAI_API_KEY": "sk-...",
-        "PHOENIX_BASE_URL": "http://localhost:6006",
-        "PHOENIX_API_KEY": "local",
-        "PATIENT_ENDPOINT": "http://localhost:8082/chat"
-      }
-    }
-  }
-}
+```bash
+pip install -e .
+cassandra-mcp                 # or: python -m cassandra.mcp_server
 ```
 
-Now any Copilot/Claude/Cursor session can say *"diagnose this agent turn"* or *"supervise my
-latest production trace"* and Cassandra answers — the meta-agent, distributed. And it is not
-ShopBot-only: point `PATIENT_PROJECT`/`PATIENT_ENDPOINT` at **your** agent — see
-["Bring your own agent"](docs/WORKFLOWS.md#bring-your-own-agent) and the drop-in
+And it's not ShopBot-only: point `PATIENT_PROJECT` / `PATIENT_ENDPOINT` at **your** agent —
+see ["Bring your own agent"](docs/WORKFLOWS.md#bring-your-own-agent) and the drop-in
 [`examples/adapter_template.py`](examples/adapter_template.py).
 
-## CI prompt regression gate (`cassandra-gate`)
+### 2. In CI — a prompt regression gate
 
-Prompts are code, so test them like code. `cassandra-gate` scores a system prompt against
-an eval dataset by running every case through your live agent and judging each answer,
-then **fails the build** when the pass rate drops below the threshold:
+Prompts are code, so test them like code. `cassandra-gate` scores a system prompt against an
+eval dataset by running every case through your live agent and judging each answer, then
+**fails the build** when the pass rate drops below the threshold:
 
 ```bash
 cassandra-gate --prompt-file prompts/system_prompt.txt \
                --cases evals/cases.json --threshold 0.8
 ```
 
-The dataset format is exactly what Cassandra's Synthesizer emits, so every production
-incident Cassandra handles can be committed as a regression suite that guards all future
-prompt changes — failures compound into protection. Ready-to-copy GitHub Actions workflow:
+The dataset format is exactly what Cassandra's Synthesizer emits — so every production
+incident it handles can be committed as a regression suite that guards all future prompt
+changes. Failures compound into protection. Ready-to-copy GitHub Actions workflow:
 [`examples/github-actions-prompt-gate.yml`](examples/github-actions-prompt-gate.yml).
 
-## Auto-postmortems
+### 3. On call — auto-postmortems
 
 Every completed supervision cycle writes `reports/<incident_id>.md` — a paste-ready
-postmortem with the diagnosis, severity, root-cause chain, baseline-vs-candidate pass
-rates, the prompt diff, before/after replay evidence, and the red-team table. File it as
-a GitHub issue (`gh issue create --body-file reports/inc-<id>.md`), drop it in Slack, or
-attach it to the PR that applies the patch. The `supervise_latest` MCP tool returns the
-same markdown in its `postmortem` field.
+postmortem with the diagnosis, severity, root-cause chain, baseline-vs-candidate pass rates,
+the prompt diff, before/after replay evidence, and the red-team table. File it as a GitHub
+issue (`gh issue create --body-file reports/<id>.md`), drop it in Slack, or attach it to the
+PR that applies the patch. The `supervise_latest` MCP tool returns the same markdown.
 
-## Self-evaluation (introspection loop)
+## Built with
 
-The Arize track awards bonus points to agents that *"use their own observability data to
-improve over time."* Cassandra closes that loop on itself two ways:
+- **Reasoning core** — Gemini on Vertex AI, with OpenAI (`gpt-4o` / `gpt-4o-mini`) and
+  OpenRouter fallbacks; backend selected at runtime by env.
+- **Orchestration** — Google ADK `LoopAgent` wrapping a real custom `BaseAgent` supervision
+  cycle (google-adk 2.1.0); all business logic stays in plain, unit-tested Python.
+- **Runtime** — Vertex AI Agent Engine.
+- **Partner observability (required)** — Arize Phoenix via the `@arizeai/phoenix-mcp` server,
+  consumed through a single gateway.
+- **Published MCP** — a custom `cassandra-mcp` server exposing the supervision loop as tools.
+- **Hosting / state / secrets** — Cloud Run (dashboard), Firestore (durable cursor + dedupe),
+  Secret Manager (keys). Optional: BigQuery for long-term span analytics.
 
-- **Self-tracing** (`cassandra/instrumentation.py`): Cassandra's own LLM reasoning is
-  instrumented with OpenInference and shipped to the **`cassandra-meta`** Phoenix project —
-  so the meta-agent is as observable as the agents it supervises.
-- **Self-evaluation** (`cassandra/selfeval.py`): it runs a hand-labeled ground-truth trap
-  library (`cassandra/traps.py`) through the live Patient and its own Diagnostician, then
-  **scores its own verdicts against ground truth** — a diagnostic-accuracy scorecard
-  (overall + per failure class). Run it from the dashboard ("Grade my own diagnoses"), the
-  `POST /selfeval` endpoint, or the `self_evaluate` MCP tool.
+## How the codebase is organized
 
-The watcher, watching itself. Each incident also carries a **severity** (failure class ×
-confidence) and a **cost/latency delta** of the candidate prompt vs the baseline, and — when
-`PHOENIX_EXPERIMENTS_ENABLED=true` — the A/B is also registered as a real Phoenix experiment.
-
-## Repository Layout
+Two **separate** agents that communicate *only* through Phoenix telemetry — the pipeline is
+agent-agnostic and never imports from `patient/`.
 
 ```
 cassandra/
-├── patient/              # C1 — the fragile "ShopBot" victim agent
-│   ├── agent.py          #   Gemini-3 / OpenAI agent + FastAPI /chat + OpenInference spans
-│   ├── tools.py          #   intentionally flaky get_refund_policy / lookup_order
-│   └── instrumentation.py#   OTLP exporter → Phoenix patient-prod
-├── cassandra/            # C3 — the meta-agent (8-stage pipeline)
-│   ├── models.py         #   Incident (threaded through), Verdict, Severity, Scorecard, …
-│   ├── phoenix_mcp.py    #   the single Phoenix MCP gateway (NFR-10)
-│   ├── llm.py            #   Gemini 3 / OpenAI / OpenRouter structured/text helper
-│   ├── watcher.py        #   FR-W: poll spans since durable cursor (skips session=test)
-│   ├── diagnostician.py  #   FR-D: LLM-as-judge → annotate Phoenix span + severity
-│   ├── rootcause.py      #   FR-RC: culprit + causal chain + fix strategy
-│   ├── synthesizer.py    #   FR-S: adversarial dataset → Phoenix dataset
-│   ├── evaluator.py      #   FR-E: live baseline vs candidate scoring + efficiency
-│   ├── patcher.py        #   FR-PA: prompt patch → Phoenix prompt version + diff
-│   ├── replay.py         #   FR-RP: re-run the original failing input on the patch
-│   ├── redteam.py        #   FR-RT: adversarial probes at the live agent
-│   ├── selfeval.py       #   FR-SE: grade its own diagnoses vs traps.py ground truth
-│   ├── traps.py          #   shared hand-labeled ground-truth trap library
-│   ├── instrumentation.py#   self-tracing into cassandra-meta (OpenInference)
-│   ├── phoenix_experiments.py # optional on-product Phoenix experiments (flagged)
+├── patient/              # the fragile "ShopBot" victim agent
+│   ├── agent.py          #   Gemini/OpenAI agent + FastAPI /chat + OpenInference spans
+│   └── tools.py          #   intentionally flaky get_refund_policy / lookup_order
+├── cassandra/            # the meta-agent (8-stage pipeline)
+│   ├── models.py         #   Incident (threaded through every stage), Verdict, Severity, …
+│   ├── phoenix_mcp.py    #   the single Phoenix MCP gateway
+│   ├── llm.py            #   Gemini / OpenAI / OpenRouter structured/text helper
+│   ├── watcher.py        #   poll spans since durable cursor (skips session=test)
+│   ├── diagnostician.py  #   LLM-as-judge → annotate span + severity
+│   ├── rootcause.py      #   culprit + causal chain + fix strategy
+│   ├── synthesizer.py    #   adversarial dataset → Phoenix dataset
+│   ├── evaluator.py      #   live baseline vs. candidate scoring + efficiency
+│   ├── patcher.py        #   prompt patch → Phoenix prompt version + diff
+│   ├── replay.py         #   re-run the original failing input on the patch
+│   ├── redteam.py        #   adversarial probes at the live agent
+│   ├── selfeval.py       #   grade its own diagnoses vs. traps.py ground truth
 │   ├── loop_agent.py     #   pipeline + real ADK LoopAgent/BaseAgent shell
-│   ├── mcp_server.py     #   cassandra-mcp: publishes supervision as MCP tools (6)
-│   ├── gate.py           #   cassandra-gate: CI prompt regression gate (CLI + MCP)
-│   ├── report.py         #   auto-postmortem renderer (reports/<incident_id>.md)
-│   ├── state.py          #   durable cursor + dedupe (Firestore/local)
-│   └── events.py         #   in-process bus → dashboard SSE
-├── dashboard/            # C4 — FastAPI: serves ui/index.html + SSE /events + /ask + /selfeval
-│   └── ui/index.html     #   self-contained OLED cockpit (no build step)
-├── web/                  # legacy React/Vite cockpit — no longer wired in
-├── scripts/
-│   ├── run_pipeline.py   #   runs one complete end-to-end supervision cycle locally
-│   ├── seed_incident.py  #   C5 — deterministic demo trap + labeled set
-│   └── spike_enumerate_mcp.py  # Day-1 Phoenix MCP enumeration (de-risk R1)
+│   ├── mcp_server.py     #   cassandra-mcp: publishes supervision as 6 MCP tools
+│   ├── gate.py           #   cassandra-gate: CI prompt regression gate
+│   └── report.py         #   auto-postmortem renderer
+├── dashboard/ui/index.html  # self-contained OLED cockpit (no build step)
 ├── deploy/               # cloudrun.Dockerfile, cloudbuild.yaml, agent_engine.py
-├── tests/                # offline unit tests (LLM + MCP mocked)
-└── docs/                 # PRD, requirements, architecture, plan, demo, strategy
+└── tests/                # offline unit tests (LLM + MCP mocked)
 ```
 
-## Run Locally
+## Documentation
 
-```bash
-pip install -e ".[dev]"
-cp .env.example .env            # Fill in OpenAI/Gemini API keys + Phoenix URLs
-                                # (public deploys must also set REPLAY_SHARED_SECRET
-                                #  on BOTH services; see deploy/cloudbuild.yaml)
-
-# 1. Start the Patient Agent (ShopBot)
-uvicorn patient.agent:app --port 8082 --reload
-
-# 2. Start the FastAPI Dashboard (cockpit at http://localhost:8085, animated explainer at /how)
-uvicorn dashboard.main:app --port 8085 --reload
-
-# 3. Drive one supervision cycle (seed an incident, poll, diagnose, patch, replay, red-team)
-python scripts/run_pipeline.py
-
-# Run offline unit tests
-pytest
-```
-
-> The cockpit is a single self-contained file (`dashboard/ui/index.html`) served directly by
-> the dashboard — no Node/Vite build step. The legacy `web/` React app is no longer wired in.
+| Doc | Purpose |
+|-----|---------|
+| [docs/PITCH.md](docs/PITCH.md) | The narrative pitch — for the website, Devpost page, and demo video |
+| [docs/WORKFLOWS.md](docs/WORKFLOWS.md) | How to actually use Cassandra: IDE copilot, CI gate, live supervision, postmortems |
+| [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) | Google Cloud deploy guide: Cloud Run + Vertex AI Agent Engine |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System & agent architecture, data flow, MCP surface |
+| [docs/SYSTEM_DESIGN.md](docs/SYSTEM_DESIGN.md) | Plain-language design: every workflow narrated, flaws table, security audit |
+| [docs/PRD.md](docs/PRD.md) · [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) | Product requirements & FR-*/NFR- specs |
+| [docs/DISTRIBUTION.md](docs/DISTRIBUTION.md) | Post-hackathon distribution & monetization roadmap |
+| [docs/sessions/](docs/sessions/) | Per-session change log — the project's durable working memory |
 
 ## Status
 
-**Codebase complete and fully verified.**
-All modules byte-compile and live end-to-end integration runs succeed.
-
-| Area | State |
-|------|-------|
-| Docs (PRD → strategy) | ✅ complete, reconciled with official Devpost page |
-| Patient + incident seeder (C1/C5) | ✅ code complete and verified live |
-| Cassandra 8-stage pipeline (C3) | ✅ diagnose→root-cause→synthesize→eval→patch→replay→red-team |
-| Evaluation | ✅ real baseline-vs-candidate scoring (no stubbed experiments) |
-| Dashboard (C4) | ✅ single self-contained cockpit (no build step) — SSE + UI |
-| Custom `cassandra-mcp` server | ✅ 6 tools (incl. gate_prompt + self_evaluate), registered + unit-tested |
-| CI prompt regression gate | ✅ `cassandra-gate` CLI + `gate_prompt` MCP tool + GitHub Actions example |
-| Auto-postmortems | ✅ every cycle writes `reports/<incident_id>.md`; returned by `supervise_latest` |
-| Self-evaluation scorecard | ✅ grades its own diagnostic accuracy vs labeled ground truth — **100%** (11/11) on OpenAI |
-| Animated explainer page | ✅ self-contained `/how` — every workflow + MCP call I/O, no build step |
-| `system_override` hardening | ✅ sandboxed `session_id="test"` path + `REPLAY_SHARED_SECRET` token gate for public deploys (unit + live tested) |
-| Self-tracing | ✅ Cassandra's own reasoning traced into the `cassandra-meta` Phoenix project |
-| Cost/latency + severity | ✅ candidate-vs-baseline efficiency delta + incident severity |
-| Real Phoenix experiments | ✅ optional on-product A/B (`PHOENIX_EXPERIMENTS_ENABLED`, needs live Phoenix) |
-| ADK orchestration shell | ✅ real `LoopAgent`+`BaseAgent`, builds against google-adk 2.1.0 |
-| Deploy manifests (Cloud Run / Agent Engine) | ✅ written |
-| Phoenix MCP surface | ✅ fully integrated and verified via live `@arizeai/phoenix-mcp` |
-| Live end-to-end run on Phoenix | ✅ verified live (both Gemini and OpenAI backends) |
-| Feedback loop protection | ✅ verified live (test session filtering prevents infinite loops) |
-| Tests | ✅ 23 passing (offline; LLM + MCP mocked) |
-| Vertex Agent Engine run (needs your GCP creds) | ⛔ pending |
-| Hosted URL + demo video | ⛔ pending |
+**Codebase complete and verified end-to-end** (both Gemini and OpenAI backends; 23 offline
+tests passing). The full pipeline — diagnose → root-cause → synthesize → evaluate → patch →
+replay → red-team — runs live against Phoenix, with real baseline-vs-candidate scoring (no
+stubbed experiments), feedback-loop protection, self-tracing into `cassandra-meta`, and a
+100% diagnostic self-score. Deploy manifests for Cloud Run and Vertex AI Agent Engine are
+written; a hosted URL + demo video are the remaining items.
 
 ## License
 
