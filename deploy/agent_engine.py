@@ -57,7 +57,9 @@ def main() -> None:
             "httpx>=0.27.0",
             "openai>=1.50.0",
         ],
-        extra_packages=["cassandra", "patient"],
+        # Only the cassandra package is imported by the agent graph; the pipeline
+        # was decoupled from patient/, so it need not ship in the runtime.
+        extra_packages=["cassandra"],
         display_name="cassandra-meta-agent",
     )
     print(f"Deployed Cassandra to Agent Engine: {remote.resource_name}")
