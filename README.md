@@ -59,7 +59,7 @@ project (`cassandra-meta`), and a built-in self-evaluation runs a hand-labeled t
 through its own Diagnostician and scores its diagnostic accuracy against ground truth. The
 supervisor is as observable — and as measurable — as the agents it supervises.
 
-> The watcher, watching itself. *(Current diagnostic self-score: 100% — 11/11 on the OpenAI backend.)*
+> The watcher, watching itself. *(Live diagnostic self-score: 10/11 — 91% — on the hosted Vertex Gemini backend.)*
 
 ## Architecture at a glance
 
@@ -115,18 +115,20 @@ and Cassandra scores itself.
 
 ```bash
 pip install -e ".[dev]"
-cp .env.example .env            # fill in OpenAI/Gemini keys + Phoenix URLs
+cp .env.example .env            # fill in Vertex/Gemini (or OpenAI) keys + Phoenix URLs
 
 uvicorn patient.agent:app --port 8082 --reload   # 1. the Patient (ShopBot)
-uvicorn dashboard.main:app --port 8085 --reload  # 2. cockpit at :8085 (animated explainer at /how)
+uvicorn dashboard.main:app --port 8085 --reload  # 2. UI + SSE at :8085 (animated explainer at /how)
 python scripts/run_pipeline.py                   # 3. drive one full supervision cycle
 
 pytest                          # offline unit tests (LLM + MCP mocked)
 ```
 
-> The cockpit is a single self-contained file (`dashboard/ui/index.html`) served directly by
-> the dashboard — no Node/Vite build step. The legacy `web/` React app is no longer wired in.
-> Public deploys must also set `REPLAY_SHARED_SECRET` on both services (see `deploy/cloudbuild.yaml`).
+> The deployed UI is the **React app in `web/`** (built by the Docker `webbuild` stage and
+> served at `/`). The self-contained single-file cockpit (`dashboard/ui/index.html`) is
+> served at `/cockpit`, and is the automatic fallback at `/` when `web/dist` is absent — e.g.
+> the `pytest`/local commands above need no Node build. Public deploys must also set
+> `REPLAY_SHARED_SECRET` on both services (see `deploy/cloudbuild.yaml`).
 
 ## Three ways to use it
 
@@ -204,8 +206,9 @@ PR that applies the patch. The `supervise_latest` MCP tool returns the same mark
 
 ## Built with
 
-- **Reasoning core** — Gemini on Vertex AI, with OpenAI (`gpt-4o` / `gpt-4o-mini`) and
-  OpenRouter fallbacks; backend selected at runtime by env.
+- **Reasoning core** — Gemini 2.5 on Vertex AI (`gemini-2.5-flash-lite`), with OpenRouter and
+  OpenAI fallbacks for local dev; backend selected at runtime by env. The hosted demo runs on
+  Vertex Gemini, per the hackathon's Gemini requirement.
 - **Orchestration** — Google ADK `LoopAgent` wrapping a real custom `BaseAgent` supervision
   cycle (google-adk 2.1.0); all business logic stays in plain, unit-tested Python.
 - **Runtime** — Vertex AI Agent Engine.
@@ -242,7 +245,10 @@ cassandra/
 │   ├── mcp_server.py     #   cassandra-mcp: publishes supervision as 6 MCP tools
 │   ├── gate.py           #   cassandra-gate: CI prompt regression gate
 │   └── report.py         #   auto-postmortem renderer
-├── dashboard/ui/index.html  # self-contained OLED cockpit (no build step)
+├── web/                  # React/Vite cockpit — the deployed UI (served at /)
+├── dashboard/
+│   ├── main.py           #   FastAPI + SSE; serves web/dist at / (single-file cockpit at /cockpit)
+│   └── ui/index.html     #   self-contained single-file cockpit (no build step)
 ├── deploy/               # cloudrun.Dockerfile, cloudbuild.yaml, agent_engine.py
 └── tests/                # offline unit tests (LLM + MCP mocked)
 ```
