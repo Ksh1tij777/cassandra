@@ -272,6 +272,10 @@ prompt version written back into Phoenix, the original failing input replayed to
 **FIXED** verdict, and an auto-postmortem generated. 39 offline tests passing; live
 diagnostic self-score 10/11 (91%). Both Gemini and OpenAI backends supported.
 
+Also deployed to **Vertex AI Agent Engine** (the managed ADK runtime) — resource
+`projects/905502723393/locations/us-central1/reasoningEngines/1519338702365523968`,
+live and queryable (`python -m deploy.agent_engine`).
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE).

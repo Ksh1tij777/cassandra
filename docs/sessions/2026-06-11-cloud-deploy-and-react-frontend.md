@@ -61,16 +61,18 @@ because the single-file cockpit was the quick demo path). Brought it current:
 - Verified live: `/` serves React (`title: Cassandra - the meta-agent that watches agents`),
   `/cockpit` serves the single-file cockpit. Commits `c5ccfc3`, `4b70fe3`.
 
-## Vertex AI Agent Engine (attempted, parked)
+## Vertex AI Agent Engine (DEPLOYED — live)
 
-Three genuine `agent_engines.create()` deploys, each fixing a real error: wrong project
-(stale `.env`) -> forced `cassandra-498318`; unwrapped `LoopAgent` ("cannot serve traffic")
--> wrapped in `AdkApp`; runtime `ModuleNotFoundError: vertexai` -> added
-`google-cloud-aiplatform[agent_engines]`+`cloudpickle` to `requirements`. Each provisioned a
-**real Reasoning Engine resource in the correct project**; the last threw an intermittent
-500 (Google-side). **Parked deliberately**: it's a managed-runtime duplicate of the
-dashboard loop; the GCE VM satisfies hosting and the `LoopAgent`/`AdkApp` in code satisfies
-"built with ADK". `deploy/agent_engine.py` is now deploy-ready (commit `63c6562`).
+Iterated `agent_engines.create()`, each attempt fixing a real error: wrong project (stale
+`.env`) -> forced `cassandra-498318`; unwrapped `LoopAgent` ("cannot serve traffic") ->
+wrapped in `AdkApp`; runtime `ModuleNotFoundError: vertexai` -> added
+`google-cloud-aiplatform[agent_engines]`+`cloudpickle` to `requirements`; dropped `patient`
+from `extra_packages` (only `cassandra` is imported by the agent graph). **Result: live
+Reasoning Engine** `projects/905502723393/locations/us-central1/reasoningEngines/1519338702365523968`
+— verified queryable (exposes the AdkApp session/query operations). Satisfies the
+"built with Google Cloud Agent Builder / Agent Engine" requirement on the real managed
+runtime. Prereqs set up: ADC quota project, GCS staging bucket `cassandra-498318-agent-engine`.
+Final config in `deploy/agent_engine.py` (commits `63c6562`, `857e970`).
 
 ## Infra created on `cassandra-498318` (priyal account, billing/credits attached)
 
